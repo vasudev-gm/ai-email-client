@@ -1,11 +1,11 @@
 @AGENTS.md
 
-# AI Email Client — CLAUDE.md
+# AI Email Client — Agent Documentation
 
 ## Project Overview
 
 AI-first universal email client built as a mobile-ready PWA with Next.js 16 App Router.  
-Supports Gmail, Outlook (Microsoft 365), and IMAP/SMTP email accounts with AI-powered features via the Anthropic Claude API.
+Supports Gmail, Outlook (Microsoft 365), and IMAP/SMTP email accounts with AI-powered features via multiple AI providers (Anthropic Claude, OpenAI, or local fallback).
 
 ## Development Commands
 
@@ -27,7 +27,10 @@ npx prisma studio    # Open Prisma Studio GUI
 - **Framework**: Next.js 16 App Router (TypeScript, Tailwind CSS)
 - **Auth**: NextAuth.js v5 (beta) — Google, Microsoft Entra ID, IMAP Credentials
 - **Database**: Prisma ORM + SQLite (dev) — see `prisma/schema.prisma`
-- **AI**: Anthropic Claude (`claude-opus-4-5`) via `@anthropic-ai/sdk`
+- **AI**: Multi-provider support via `lib/ai.ts`:
+  - **Anthropic Claude** (`claude-opus-4-5`) — primary provider
+  - **OpenAI** (GPT-4o, GPT-4-turbo, GPT-3.5-turbo) — alternative provider
+  - **Local SLM** — keyword-based fallback when no API keys are set
 - **State**: Zustand (`store/emailStore.ts`)
 - **Data fetching**: TanStack React Query
 - **Testing**: Jest + React Testing Library
@@ -57,7 +60,7 @@ components/           # React UI components
   AccountSwitcher.tsx # Multi-account dropdown
 
 lib/                  # Shared utilities and services
-  ai.ts               # Anthropic AI functions
+  ai.ts               # Multi-provider AI functions (Anthropic, OpenAI, local)
   auth.ts             # NextAuth configuration
   email-utils.ts      # Email helpers + MOCK_EMAILS
   gmail.ts            # Gmail API stub
@@ -86,7 +89,7 @@ __tests__/            # Jest test suites
 - **API route params**: In Next.js 15, route params are `Promise<{ id: string }>` — always `await params`.
 - **No direct imapflow import**: `lib/imap.ts` only defines interfaces and stub functions.
 - **MOCK_EMAILS**: Used for demo mode — all API routes use this data. Real email fetching goes in `lib/gmail.ts`, `lib/outlook.ts`, `lib/imap.ts`.
-- **AI graceful degradation**: All AI functions return fallback strings/numbers when `ANTHROPIC_API_KEY` is not set.
+- **AI multi-provider**: `lib/ai.ts` automatically selects provider based on available API keys (Anthropic → OpenAI → local fallback). All AI functions gracefully degrade to local heuristics when no API keys are set.
 - **useCallback for async fetch functions**: Used in `AISummary.tsx` and `ReplyDraft.tsx` to satisfy `react-hooks/exhaustive-deps`.
 - **Mobile-first**: Sidebar is hidden on mobile (hamburger menu), email list hides when email is selected.
 
@@ -95,11 +98,21 @@ __tests__/            # Jest test suites
 Copy `.env.example` to `.env` and fill in values:
 - `DATABASE_URL` — SQLite path or PostgreSQL connection string
 - `NEXTAUTH_SECRET` — Random secret for session encryption
-- `ANTHROPIC_API_KEY` — Optional; AI features degrade gracefully without it
+- **AI Provider Keys** (choose one or leave all empty for local fallback):
+  - `ANTHROPIC_API_KEY` — Anthropic Claude API key (recommended)
+  - `OPENAI_API_KEY` — OpenAI API key (alternative)
+  - `OPENAI_MODEL` — Optional: specify model (gpt-4o, gpt-4-turbo, gpt-3.5-turbo)
 - `GOOGLE_CLIENT_ID/SECRET` — For Google OAuth
 - `MICROSOFT_CLIENT_ID/SECRET` — For Microsoft OAuth
 
+**AI Provider Priority**: The system automatically selects the first available provider in this order:
+1. Anthropic Claude (if `ANTHROPIC_API_KEY` is set)
+2. OpenAI (if `OPENAI_API_KEY` is set)
+3. Local SLM (keyword-based heuristics, always available)
+
 ## AI Agent Guidelines
+
+### For All AI Agents (Claude Code, GitHub Copilot, OpenAI Codex, Antigravity, etc.)
 
 - Always run `npm run build` after changes to catch TypeScript errors.
 - Always run `npm test` to verify tests pass.
@@ -107,4 +120,45 @@ Copy `.env.example` to `.env` and fill in values:
 - When adding new API routes with dynamic segments, use `params: Promise<{ id: string }>` pattern.
 - Do not install `next-pwa` or `workbox-webpack-plugin`.
 - Keep AI prompts in `lib/ai.ts` — do not scatter API calls across components.
+
+### AI Provider Configuration
+
+The application supports multiple AI providers with automatic fallback:
+
+1. **Anthropic Claude** (Primary)
+   - Set `ANTHROPIC_API_KEY` in `.env`
+   - Uses `claude-opus-4-5` model
+   - Best for high-quality summaries and drafts
+
+2. **OpenAI** (Alternative)
+   - Set `OPENAI_API_KEY` in `.env`
+   - Optionally set `OPENAI_MODEL` (default: `gpt-4o`)
+   - Supports: gpt-4o, gpt-4-turbo, gpt-3.5-turbo, etc.
+   - Install with: `npm install openai` (optional dependency)
+
+3. **Local SLM** (Fallback)
+   - No API key required
+   - Uses keyword-based heuristics
+   - Always available as last resort
+   - Provides basic functionality without external API calls
+
+### Adding New AI Providers
+
+To add support for additional AI providers (e.g., Cohere, Hugging Face, local models):
+
+1. Add provider detection in `getAIProvider()` function
+2. Implement provider-specific functions (e.g., `cohereSummarize()`)
+3. Add case to switch statements in public API functions
+4. Update environment variables in `.env.example`
+5. Document in this file
+
+### Agent-Specific Notes
+
+**Claude Code CLI**: This is the primary development environment. All features are optimized for Claude.
+
+**GitHub Copilot**: Works seamlessly with the codebase. Use inline suggestions for component development.
+
+**OpenAI Codex**: Compatible with the multi-provider AI system. Can use OpenAI as both the development assistant and the runtime AI provider.
+
+**Antigravity / Other Agents**: Follow the standard Next.js 15 conventions documented above. The codebase uses standard patterns that work with any AI coding assistant.
 
