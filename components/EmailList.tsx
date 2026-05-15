@@ -120,7 +120,7 @@ export default function EmailList({
           <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
           Select all
         </label>
-        <div className="text-xs text-gray-500 dark:text-gray-400">
+        <div className="text-xs text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
           {selectedIds.length > 0 ? `${selectedIds.length} selected` : "No selection"}
         </div>
       </div>

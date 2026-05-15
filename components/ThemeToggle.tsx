@@ -2,10 +2,10 @@
 
 import { useSyncExternalStore } from "react"
 import { Moon, Sun } from "lucide-react"
-import { THEME_STORAGE_KEY } from "@/lib/theme"
+import { DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/theme"
 
 function getCurrentTheme() {
-  if (typeof document === "undefined") return "light"
+  if (typeof document === "undefined") return DEFAULT_THEME
   return document.documentElement.classList.contains("dark") ? "dark" : "light"
 }
 
@@ -18,7 +18,7 @@ export default function ThemeToggle() {
       return () => window.removeEventListener("themechange", handleThemeChange)
     },
     getCurrentTheme,
-    () => "light"
+    () => DEFAULT_THEME
   )
 
   const toggleTheme = () => {
