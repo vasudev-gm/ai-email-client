@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Sidebar from "@/components/Sidebar"
 import EmailList from "@/components/EmailList"
 import EmailViewer from "@/components/EmailViewer"
@@ -16,6 +16,7 @@ export default function Home() {
     selectedEmailId,
     currentFolder,
     searchQuery,
+    selectedAccountId,
     isComposeOpen,
     isSidebarOpen,
     setSelectedEmailId,
@@ -28,28 +29,62 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.set("folder", currentFolder)
-    if (searchQuery) params.set("search", searchQuery)
-    
-    fetch(`/api/emails?${params}`)
-      .then(r => r.json())
-      .then(data => {
-        setEmails(data.emails || [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [currentFolder, searchQuery])
+    let isCancelled = false
+    const fetchEmails = async () => {
+      setLoading(true)
+      const params = new URLSearchParams()
+      params.set("folder", currentFolder)
+      if (searchQuery) params.set("search", searchQuery)
+      if (selectedAccountId) params.set("accountId", selectedAccountId)
+
+      try {
+        const response = await fetch(`/api/emails?${params}`)
+        const data = await response.json()
+        if (!isCancelled) {
+          setEmails(data.emails || [])
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false)
+        }
+      }
+    }
+    void fetchEmails()
+    return () => {
+      isCancelled = true
+    }
+  }, [currentFolder, searchQuery, selectedAccountId])
 
   useEffect(() => {
-    if (selectedEmailId) {
-      fetch(`/api/emails/${selectedEmailId}`)
-        .then(r => r.json())
-        .then(data => setSelectedEmail(data))
-        .catch(() => setSelectedEmail(null))
-    } else {
-      setSelectedEmail(null)
+    let isCancelled = false
+    const fetchEmail = async () => {
+      if (!selectedEmailId) {
+        if (!isCancelled) {
+          setSelectedEmail(null)
+        }
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/emails/${selectedEmailId}`)
+        const data = await response.json()
+        if (!isCancelled) {
+          setSelectedEmail(data)
+          setEmails((current) =>
+            current.map((email) =>
+              email.id === selectedEmailId ? { ...email, isRead: true } : email
+            )
+          )
+        }
+      } catch {
+        if (!isCancelled) {
+          setSelectedEmail(null)
+        }
+      }
+    }
+    void fetchEmail()
+    return () => {
+      isCancelled = true
     }
   }, [selectedEmailId])
 
@@ -67,6 +102,26 @@ export default function Home() {
     })
     setIsComposeOpen(false)
   }
+
+  const handleBulkAction = useCallback(async (ids: string[], action: "archive" | "star") => {
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/emails/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(action === "archive" ? { isArchived: true } : { isStarred: true }),
+        })
+      )
+    )
+    setEmails((current) =>
+      current.map((email) => {
+        if (!ids.includes(email.id)) return email
+        return action === "archive"
+          ? { ...email, isArchived: true }
+          : { ...email, isStarred: true }
+      }).filter((email) => currentFolder !== "INBOX" || !email.isArchived)
+    )
+  }, [currentFolder])
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -122,6 +177,7 @@ export default function Home() {
               emails={emails}
               selectedEmailId={selectedEmailId}
               onSelectEmail={setSelectedEmailId}
+              onBulkAction={handleBulkAction}
               loading={loading}
             />
           </div>

@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Sparkles, RefreshCw } from "lucide-react"
+import { Sparkles, RefreshCw, X } from "lucide-react"
 
 interface AISummaryProps {
   emailId: string
   localAIMode: "heuristic" | "true-slm"
+  onClose: () => void
 }
 
-export default function AISummary({ emailId, localAIMode }: AISummaryProps) {
+export default function AISummary({ emailId, localAIMode, onClose }: AISummaryProps) {
   const [summary, setSummary] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +61,10 @@ export default function AISummary({ emailId, localAIMode }: AISummaryProps) {
   }, [emailId, localAIMode])
 
   useEffect(() => {
-    fetchSummary()
+    const timer = setTimeout(() => {
+      void fetchSummary()
+    }, 0)
+    return () => clearTimeout(timer)
   }, [fetchSummary])
 
   return (
@@ -70,19 +74,29 @@ export default function AISummary({ emailId, localAIMode }: AISummaryProps) {
           <Sparkles className="w-4 h-4" />
           AI Summary
         </div>
-        <button
-          onClick={fetchSummary}
-          disabled={loading}
-          className="p-1 rounded hover:bg-purple-100 transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-purple-500 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={fetchSummary}
+            disabled={loading}
+            className="p-1 rounded hover:bg-purple-100 transition-colors"
+            aria-label="Refresh summary"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-purple-500 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded hover:bg-purple-100 transition-colors"
+            aria-label="Close summary"
+          >
+            <X className="w-3.5 h-3.5 text-purple-500" />
+          </button>
+        </div>
       </div>
       {loading && (
         <div className="space-y-2">
           {localAIMode === "true-slm" && (
             <>
-              <p className="text-xs text-purple-700">Downloading true local model… {downloadProgress}%</p>
+              <p className="text-xs text-purple-700">Preparing private local AI… {downloadProgress}%</p>
               <div className="h-2 bg-purple-200 rounded overflow-hidden">
                 <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
               </div>

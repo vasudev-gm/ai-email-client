@@ -31,9 +31,15 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
   if (!isOpen) return null
 
   const handleSend = async () => {
-    if (!to || !subject || !content) return
+    if (!to.trim() || !subject.trim() || !content.trim()) return
     setSending(true)
-    await onSend({ to, cc: cc || undefined, bcc: bcc || undefined, subject, content })
+    await onSend({
+      to: to.trim(),
+      cc: cc.trim() || undefined,
+      bcc: bcc.trim() || undefined,
+      subject: subject.trim(),
+      content: content.trim(),
+    })
     setSending(false)
     setTo("")
     setCc("")
@@ -60,8 +66,8 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
             <div className="flex items-center border-b border-gray-200 py-2">
               <label className="text-sm text-gray-500 w-14 flex-shrink-0">To</label>
               <input
-                type="email"
-                placeholder="recipients@example.com"
+                type="text"
+                placeholder="recipient@example.com, team@example.com"
                 value={to}
                 onChange={e => setTo(e.target.value)}
                 className="flex-1 text-sm outline-none placeholder-gray-400"
@@ -79,8 +85,8 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
                 <div className="flex items-center border-b border-gray-200 py-2">
                   <label className="text-sm text-gray-500 w-14 flex-shrink-0">Cc</label>
                   <input
-                    type="email"
-                    placeholder="cc@example.com"
+                     type="text"
+                     placeholder="cc@example.com, team@example.com"
                     value={cc}
                     onChange={e => setCc(e.target.value)}
                     className="flex-1 text-sm outline-none placeholder-gray-400"
@@ -89,8 +95,8 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
                 <div className="flex items-center border-b border-gray-200 py-2">
                   <label className="text-sm text-gray-500 w-14 flex-shrink-0">Bcc</label>
                   <input
-                    type="email"
-                    placeholder="bcc@example.com"
+                     type="text"
+                     placeholder="bcc@example.com, team@example.com"
                     value={bcc}
                     onChange={e => setBcc(e.target.value)}
                     className="flex-1 text-sm outline-none placeholder-gray-400"

@@ -5,8 +5,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const folder = searchParams.get("folder") || "INBOX"
   const search = searchParams.get("search") || ""
+  const accountId = searchParams.get("accountId") || ""
 
-  let emails = MOCK_EMAILS
+  let emails = MOCK_EMAILS.filter((email) => !email.isDeleted)
+
+  if (accountId) {
+    emails = emails.filter((email) => email.accountId === accountId)
+  }
 
   if (folder === "INBOX") {
     emails = emails.filter(e => !e.isSent && !e.isDraft && !e.isArchived && !e.isDeleted)
@@ -28,6 +33,8 @@ export async function GET(request: Request) {
       (e.bodyText || "").toLowerCase().includes(q)
     )
   }
+
+  emails = emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   return NextResponse.json({ emails, total: emails.length })
 }

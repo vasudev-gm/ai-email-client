@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import EmailList from "@/components/EmailList"
 import { MOCK_EMAILS } from "@/lib/email-utils"
 
@@ -23,5 +23,21 @@ describe("EmailList", () => {
       />
     )
     expect(screen.getByText(/no emails/i)).toBeInTheDocument()
+  })
+
+  it("supports select all and bulk action", () => {
+    const onBulkAction = jest.fn()
+    render(
+      <EmailList
+        emails={MOCK_EMAILS.slice(0, 2)}
+        selectedEmailId={null}
+        onSelectEmail={() => {}}
+        onBulkAction={onBulkAction}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/select all/i))
+    fireEvent.click(screen.getByRole("button", { name: /archive selected/i }))
+    expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "archive")
   })
 })

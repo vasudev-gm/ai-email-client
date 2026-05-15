@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { EmailData, formatEmailDate, extractDisplayName, truncateText } from "@/lib/email-utils"
 import { Star } from "lucide-react"
 
@@ -7,6 +8,7 @@ interface EmailListProps {
   emails: EmailData[]
   selectedEmailId: string | null
   onSelectEmail: (id: string) => void
+  onBulkAction?: (ids: string[], action: "archive" | "star") => Promise<void> | void
   loading?: boolean
 }
 
@@ -26,7 +28,27 @@ const priorityLabels: Record<number, string> = {
   1: "Min",
 }
 
-export default function EmailList({ emails, selectedEmailId, onSelectEmail, loading }: EmailListProps) {
+export default function EmailList({ emails, selectedEmailId, onSelectEmail, onBulkAction, loading }: EmailListProps) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const selectableIds = useMemo(() => emails.map((email) => email.id), [emails])
+  const allSelected = selectableIds.length > 0 && selectedIds.length === selectableIds.length
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : selectableIds)
+  }
+
+  const runBulkAction = (action: "archive" | "star") => {
+    if (!selectedIds.length || !onBulkAction) return
+    onBulkAction(selectedIds, action)
+    setSelectedIds([])
+  }
+
   if (loading) {
     return (
       <div className="p-4 space-y-3">
@@ -52,6 +74,28 @@ export default function EmailList({ emails, selectedEmailId, onSelectEmail, load
 
   return (
     <div className="divide-y divide-gray-100">
+      <div className="sticky top-0 z-10 bg-white px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+        <label className="flex items-center gap-2 text-xs text-gray-600">
+          <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+          Select all
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={selectedIds.length === 0}
+            onClick={() => runBulkAction("star")}
+            className="text-xs px-2 py-1 rounded bg-yellow-50 text-yellow-700 disabled:opacity-40"
+          >
+            Star selected
+          </button>
+          <button
+            disabled={selectedIds.length === 0}
+            onClick={() => runBulkAction("archive")}
+            className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-40"
+          >
+            Archive selected
+          </button>
+        </div>
+      </div>
       {emails.map((email) => (
         <button
           key={email.id}
@@ -64,6 +108,13 @@ export default function EmailList({ emails, selectedEmailId, onSelectEmail, load
         >
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 min-w-0">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(email.id)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={() => toggleSelection(email.id)}
+                aria-label={`Select ${email.subject}`}
+              />
               {!email.isRead && (
                 <div className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" />
               )}

@@ -1,15 +1,16 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Wand2, RefreshCw, Copy, ArrowRight } from "lucide-react"
+import { Wand2, RefreshCw, Copy, ArrowRight, X } from "lucide-react"
 
 interface ReplyDraftProps {
   emailId: string
   onInsert: () => void
   localAIMode: "heuristic" | "true-slm"
+  onClose: () => void
 }
 
-export default function ReplyDraft({ emailId, onInsert, localAIMode }: ReplyDraftProps) {
+export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: ReplyDraftProps) {
   const [draft, setDraft] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +63,10 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode }: ReplyDraf
   }, [emailId, localAIMode])
 
   useEffect(() => {
-    fetchDraft()
+    const timer = setTimeout(() => {
+      void fetchDraft()
+    }, 0)
+    return () => clearTimeout(timer)
   }, [fetchDraft])
 
   const handleCopy = () => {
@@ -106,13 +110,20 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode }: ReplyDraf
               </button>
             </>
           )}
+          <button
+            onClick={onClose}
+            className="p-1 rounded hover:bg-blue-100 transition-colors"
+            aria-label="Close draft"
+          >
+            <X className="w-3.5 h-3.5 text-blue-500" />
+          </button>
         </div>
       </div>
       {loading && (
         <div className="space-y-2">
           {localAIMode === "true-slm" && (
             <>
-              <p className="text-xs text-blue-700">Downloading true local model… {downloadProgress}%</p>
+              <p className="text-xs text-blue-700">Preparing private local AI… {downloadProgress}%</p>
               <div className="h-2 bg-blue-200 rounded overflow-hidden">
                 <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
               </div>

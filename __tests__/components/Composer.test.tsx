@@ -10,7 +10,7 @@ describe("Composer", () => {
         onSend={async () => {}}
       />
     )
-    expect(screen.getByPlaceholderText(/recipients/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/recipient@example\.com/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/subject/i)).toBeInTheDocument()
   })
 

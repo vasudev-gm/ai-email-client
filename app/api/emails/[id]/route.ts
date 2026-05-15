@@ -11,6 +11,7 @@ export async function GET(
   if (!email) {
     return NextResponse.json({ error: "Email not found" }, { status: 404 })
   }
+  email.isRead = true
   return NextResponse.json(email)
 }
 
@@ -20,7 +21,22 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await request.json()
-  return NextResponse.json({ success: true, id, ...body })
+  const email = MOCK_EMAILS.find(e => e.id === id)
+  if (!email) {
+    return NextResponse.json({ error: "Email not found" }, { status: 404 })
+  }
+
+  if (typeof body.isRead === "boolean") {
+    email.isRead = body.isRead
+  }
+  if (typeof body.isStarred === "boolean") {
+    email.isStarred = body.isStarred
+  }
+  if (typeof body.isArchived === "boolean") {
+    email.isArchived = body.isArchived
+  }
+
+  return NextResponse.json({ success: true, email })
 }
 
 export async function DELETE(
@@ -28,6 +44,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   void request
-  void params
+  const { id } = await params
+  const email = MOCK_EMAILS.find(e => e.id === id)
+  if (!email) {
+    return NextResponse.json({ error: "Email not found" }, { status: 404 })
+  }
+  email.isDeleted = true
   return NextResponse.json({ success: true })
 }

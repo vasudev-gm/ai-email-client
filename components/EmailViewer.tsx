@@ -44,15 +44,20 @@ export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <select
-            value={localAIMode}
-            onChange={(e) => setLocalAIMode(e.target.value as "heuristic" | "true-slm")}
-            className="h-8 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700"
-            title="Fallback AI mode"
-          >
-            <option value="heuristic">Keyword Heuristics</option>
-            <option value="true-slm">True SLM (download model)</option>
-          </select>
+          <div className="hidden md:flex items-center rounded-lg border border-gray-300 overflow-hidden">
+            <button
+              onClick={() => setLocalAIMode("heuristic")}
+              className={`px-2 py-1 text-xs ${localAIMode === "heuristic" ? "bg-gray-900 text-white" : "bg-white text-gray-600"}`}
+            >
+              Fast AI
+            </button>
+            <button
+              onClick={() => setLocalAIMode("true-slm")}
+              className={`px-2 py-1 text-xs ${localAIMode === "true-slm" ? "bg-gray-900 text-white" : "bg-white text-gray-600"}`}
+            >
+              Private Local (beta)
+            </button>
+          </div>
           <button
             onClick={() => setShowAISummary(!showAISummary)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -102,12 +107,21 @@ export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps
 
           {/* AI Summary Panel */}
           {showAISummary && (
-            <AISummary emailId={email.id} localAIMode={localAIMode} />
+            <AISummary
+              emailId={email.id}
+              localAIMode={localAIMode}
+              onClose={() => setShowAISummary(false)}
+            />
           )}
 
           {/* AI Reply Draft */}
           {showReplyDraft && (
-            <ReplyDraft emailId={email.id} onInsert={onReply} localAIMode={localAIMode} />
+            <ReplyDraft
+              emailId={email.id}
+              onInsert={onReply}
+              localAIMode={localAIMode}
+              onClose={() => setShowReplyDraft(false)}
+            />
           )}
 
           {/* Email body */}
