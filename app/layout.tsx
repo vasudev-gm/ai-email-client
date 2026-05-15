@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import Script from "next/script"
 import "./globals.css"
 import { Providers } from "./providers"
 import { THEME_INIT_SCRIPT } from "@/lib/theme"
@@ -29,11 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: THEME_INIT_SCRIPT,
-          }}
-        />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {THEME_INIT_SCRIPT}
+        </Script>
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

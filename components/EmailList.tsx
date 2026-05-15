@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { EmailData, formatEmailDate, extractDisplayName, truncateText } from "@/lib/email-utils"
 import { Star } from "lucide-react"
 
@@ -41,6 +41,8 @@ export default function EmailList({
   loading,
 }: EmailListProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isReadMenuOpen, setIsReadMenuOpen] = useState(false)
+  const readMenuRef = useRef<HTMLDivElement | null>(null)
   const selectableIds = useMemo(() => emails.map((email) => email.id), [emails])
   const emailReadState = useMemo(
     () => new Map(emails.map((email) => [email.id, email.isRead])),
@@ -60,6 +62,17 @@ export default function EmailList({
     setSelectedIds(allSelected ? [] : selectableIds)
   }
 
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (readMenuRef.current && !readMenuRef.current.contains(event.target as Node)) {
+        setIsReadMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick)
+    return () => document.removeEventListener("mousedown", handleOutsideClick)
+  }, [])
+
   const runBulkAction = (
     action: "archive" | "star" | "markRead" | "markUnread" | "restore",
     ids = selectedIds
@@ -74,11 +87,7 @@ export default function EmailList({
     if (!actionableIds.length) return
     onBulkAction(actionableIds, action)
     setSelectedIds([])
-    if (typeof document !== "undefined") {
-      document.querySelectorAll("details[data-read-status-menu]").forEach((menu) => {
-        menu.removeAttribute("open")
-      })
-    }
+    setIsReadMenuOpen(false)
   }
 
   if (loading) {
@@ -141,55 +150,59 @@ export default function EmailList({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <details className="relative" data-read-status-menu>
-            <summary
-              role="button"
+        <div className="flex items-center gap-2" ref={readMenuRef}>
+          <div className="relative">
+            <button
+              type="button"
               aria-haspopup="menu"
+              aria-expanded={isReadMenuOpen}
               aria-label="Read status actions"
-              className="list-none cursor-pointer text-xs px-2 py-1 rounded bg-blue-50 text-blue-700"
+              onClick={() => setIsReadMenuOpen((current) => !current)}
+              className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700"
             >
               Read status
-            </summary>
-            <div
-              role="menu"
-              aria-label="Read status actions"
-              className="absolute right-0 mt-1 w-40 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg p-1 z-20"
-            >
-              <button
-                role="menuitem"
-                onClick={() => runBulkAction("markRead")}
-                disabled={selectedIds.length === 0}
-                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+            </button>
+            {isReadMenuOpen && (
+              <div
+                role="menu"
+                aria-label="Read status actions"
+                className="absolute right-0 mt-1 w-40 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg p-1 z-20"
               >
-                Mark selected read
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => runBulkAction("markUnread")}
-                disabled={selectedIds.length === 0}
-                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
-              >
-                Mark selected unread
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => runBulkAction("markRead", selectableIds)}
-                disabled={!hasUnreadEmails}
-                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
-              >
-                Mark all read
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => runBulkAction("markUnread", selectableIds)}
-                disabled={!hasReadEmails}
-                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
-              >
-                Mark all unread
-              </button>
-            </div>
-          </details>
+                <button
+                  role="menuitem"
+                  onClick={() => runBulkAction("markRead")}
+                  disabled={selectedIds.length === 0}
+                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                >
+                  Mark selected read
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => runBulkAction("markUnread")}
+                  disabled={selectedIds.length === 0}
+                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                >
+                  Mark selected unread
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => runBulkAction("markRead", selectableIds)}
+                  disabled={!hasUnreadEmails}
+                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                >
+                  Mark all read
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => runBulkAction("markUnread", selectableIds)}
+                  disabled={!hasReadEmails}
+                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                >
+                  Mark all unread
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {emails.map((email) => (
