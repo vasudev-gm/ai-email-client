@@ -63,7 +63,9 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
   }, [emailId, localAIMode])
 
   useEffect(() => {
-    void Promise.resolve().then(() => fetchDraft())
+    queueMicrotask(() => {
+      void fetchDraft()
+    })
   }, [fetchDraft])
 
   const handleCopy = () => {

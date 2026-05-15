@@ -61,7 +61,9 @@ export default function AISummary({ emailId, localAIMode, onClose }: AISummaryPr
   }, [emailId, localAIMode])
 
   useEffect(() => {
-    void Promise.resolve().then(() => fetchSummary())
+    queueMicrotask(() => {
+      void fetchSummary()
+    })
   }, [fetchSummary])
 
   return (

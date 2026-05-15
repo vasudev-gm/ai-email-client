@@ -109,6 +109,9 @@ export default function Home() {
   }
 
   const handleBulkAction = useCallback(async (ids: string[], action: "archive" | "star") => {
+    const shouldShowEmail = (email: EmailData) =>
+      !(currentFolder === "INBOX" && email.isArchived)
+
     await Promise.all(
       ids.map((id) =>
         fetch(`/api/emails/${id}`, {
@@ -124,7 +127,7 @@ export default function Home() {
         return action === "archive"
           ? { ...email, isArchived: true }
           : { ...email, isStarred: true }
-      }).filter((email) => currentFolder !== "INBOX" || !email.isArchived)
+      }).filter(shouldShowEmail)
     )
   }, [currentFolder])
 
