@@ -108,7 +108,9 @@ Copy `.env.example` to `.env` and fill in values:
 **AI Provider Priority**: The system automatically selects the first available provider in this order:
 1. Anthropic Claude (if `ANTHROPIC_API_KEY` is set)
 2. OpenAI (if `OPENAI_API_KEY` is set)
-3. Local SLM (keyword-based heuristics, always available)
+3. Local fallback modes:
+   - Keyword heuristics (always available)
+   - True local SLM via `@xenova/transformers` (downloaded on first use with progress)
 
 ## AI Agent Guidelines
 
@@ -136,11 +138,11 @@ The application supports multiple AI providers with automatic fallback:
    - Supports: gpt-4o, gpt-4-turbo, gpt-3.5-turbo, etc.
    - Install with: `npm install openai` (optional dependency)
 
-3. **Local SLM** (Fallback)
+3. **Local fallback** (Fallback)
    - No API key required
-   - Uses keyword-based heuristics
-   - Always available as last resort
-   - Provides basic functionality without external API calls
+   - Heuristic mode is always available
+   - True local SLM mode is available when `@xenova/transformers` is installed
+   - UI exposes mode switch and model download progress
 
 ### Adding New AI Providers
 
@@ -161,4 +163,3 @@ To add support for additional AI providers (e.g., Cohere, Hugging Face, local mo
 **OpenAI Codex**: Compatible with the multi-provider AI system. Can use OpenAI as both the development assistant and the runtime AI provider.
 
 **Antigravity / Other Agents**: Follow the standard Next.js 15 conventions documented above. The codebase uses standard patterns that work with any AI coding assistant.
-

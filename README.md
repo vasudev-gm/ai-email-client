@@ -68,7 +68,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 1. Anthropic Claude (if `ANTHROPIC_API_KEY` is set)
 2. OpenAI (if `OPENAI_API_KEY` is set)
-3. Local SLM (keyword-based fallback, always available)
+3. Local fallback modes:
+   - Keyword heuristics (always available)
+   - True local SLM (`@xenova/transformers`, model downloaded on first use with progress UI)
 
 ## Available Scripts
 

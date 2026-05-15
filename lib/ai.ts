@@ -2,6 +2,16 @@ import Anthropic from "@anthropic-ai/sdk"
 
 // AI Provider types
 type AIProvider = "anthropic" | "openai" | "local"
+export type LocalAIMode = "heuristic" | "true-slm"
+type AIOptions = { localMode?: LocalAIMode }
+
+interface TrueSlmStatus {
+  mode: LocalAIMode
+  available: boolean
+  ready: boolean
+  progress: number
+  message: string
+}
 
 // Determine which AI provider to use based on available API keys
 function getAIProvider(): AIProvider {
@@ -16,10 +26,22 @@ const anthropicClient = process.env.ANTHROPIC_API_KEY
   : null
 
 // OpenAI client initialization (lazy loaded, optional dependency)
-let openaiClient: any = null
+interface OpenAIChatCompletionClient {
+  chat: {
+    completions: {
+      create: (input: {
+        model: string
+        max_tokens: number
+        messages: Array<{ role: "user"; content: string }>
+      }) => Promise<{ choices?: Array<{ message?: { content?: string | null } }> }>
+    }
+  }
+}
+
+let openaiClient: OpenAIChatCompletionClient | null = null
 let openaiLoadAttempted = false
 
-async function getOpenAIClient() {
+async function getOpenAIClient(): Promise<OpenAIChatCompletionClient | null> {
   if (!process.env.OPENAI_API_KEY) return null
   if (openaiClient) return openaiClient
   if (openaiLoadAttempted) return null
@@ -27,12 +49,11 @@ async function getOpenAIClient() {
   openaiLoadAttempted = true
   
   try {
-    // Try to dynamically import OpenAI - it's an optional dependency
-    // Using Function constructor to bypass TypeScript's static import checking
-    // This allows the app to build without the openai package installed
-    // @ts-ignore - intentional use of Function constructor for optional dependency
+    // Try to dynamically import OpenAI - it's an optional dependency.
+    // Using Function constructor to bypass TypeScript's static import checking.
+    // This allows the app to build without the openai package installed.
     const importOpenAI = new Function('return import("openai")')
-    const openaiModule = await importOpenAI().catch(() => null)
+    const openaiModule = await (importOpenAI() as Promise<{ default?: unknown; OpenAI?: unknown }>).catch(() => null)
     
     if (!openaiModule) {
       console.warn("OpenAI SDK not installed. Install with: npm install openai")
@@ -44,8 +65,16 @@ async function getOpenAIClient() {
       console.warn("Could not load OpenAI constructor")
       return null
     }
-    
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+    if (typeof OpenAI !== "function") {
+      console.warn("OpenAI constructor is not a function")
+      return null
+    }
+
+    const client = new (OpenAI as new (args: { apiKey?: string }) => OpenAIChatCompletionClient)({
+      apiKey: process.env.OPENAI_API_KEY
+    })
+    openaiClient = client
     return openaiClient
   } catch (error) {
     console.warn("Failed to initialize OpenAI client:", error)
@@ -55,6 +84,117 @@ async function getOpenAIClient() {
 
 // Local SLM fallback using simple heuristics
 const MIN_SENTENCE_LENGTH = 20
+const TRUE_SLM_MODEL = "Xenova/distilbart-cnn-6-6"
+type TrueSlmPipeline = (
+  prompt: string,
+  options?: { max_new_tokens?: number }
+) => Promise<Array<{ generated_text?: string }>>
+
+let trueSlmPipeline: TrueSlmPipeline | null = null
+let trueSlmLoadingPromise: Promise<TrueSlmPipeline | null> | null = null
+let trueSlmStatus: TrueSlmStatus = {
+  mode: "true-slm",
+  available: true,
+  ready: false,
+  progress: 0,
+  message: "Model not loaded",
+}
+
+function updateTrueSlmStatus(progress: number, message: string, updates?: Partial<TrueSlmStatus>) {
+  trueSlmStatus = {
+    ...trueSlmStatus,
+    progress,
+    message,
+    ...updates,
+  }
+}
+
+type TransformersModule = {
+  pipeline: (
+    task: "summarization" | "text2text-generation",
+    model: string,
+    options?: {
+      progress_callback?: (event: { progress?: number }) => void
+    }
+  ) => Promise<(prompt: string, options?: { max_new_tokens?: number }) => Promise<Array<{ generated_text?: string; summary_text?: string }>>>
+}
+
+async function getTrueSlmPipeline() {
+  if (trueSlmPipeline) return trueSlmPipeline
+  if (trueSlmLoadingPromise) return trueSlmLoadingPromise
+
+  trueSlmLoadingPromise = (async () => {
+    updateTrueSlmStatus(5, "Initializing local model loader", { available: true, ready: false })
+    try {
+      const importTransformers = new Function('return import("@xenova/transformers")')
+      const transformers = await (importTransformers() as Promise<TransformersModule>).catch(() => null)
+
+      if (!transformers?.pipeline) {
+        updateTrueSlmStatus(0, "Install @xenova/transformers to enable true SLM mode", { available: false, ready: false })
+        return null
+      }
+
+      updateTrueSlmStatus(20, "Downloading local model")
+      const pipeline = await transformers.pipeline("summarization", TRUE_SLM_MODEL, {
+        progress_callback: (event) => {
+          if (typeof event.progress === "number") {
+            updateTrueSlmStatus(Math.max(20, Math.min(95, Math.round(event.progress * 100))), "Downloading local model")
+          }
+        },
+      })
+
+      trueSlmPipeline = async (prompt, options) => {
+        const result = await pipeline(prompt, options)
+        return result.map((item) => ({
+          generated_text: item.generated_text || item.summary_text,
+        }))
+      }
+      updateTrueSlmStatus(100, "Local model ready", { ready: true })
+      return trueSlmPipeline
+    } catch (error) {
+      console.warn("Failed to initialize true local SLM pipeline:", error)
+      updateTrueSlmStatus(0, "Failed to initialize true SLM. Using heuristic fallback.", { available: false, ready: false })
+      return null
+    } finally {
+      trueSlmLoadingPromise = null
+    }
+  })()
+
+  return trueSlmLoadingPromise
+}
+
+async function trueSlmSummarize(subject: string, body: string): Promise<string> {
+  const pipeline = await getTrueSlmPipeline()
+  if (!pipeline) return localSummarize(subject, body)
+  const result = await pipeline(`${subject}\n\n${body}`, { max_new_tokens: 120 })
+  return result[0]?.generated_text?.trim() || localSummarize(subject, body)
+}
+
+async function trueSlmReplyDraft(subject: string, body: string, senderName: string): Promise<string> {
+  const pipeline = await getTrueSlmPipeline()
+  if (!pipeline) return localReplyDraft(subject, body, senderName)
+  const result = await pipeline(
+    `Write a professional email reply.\nFrom: ${senderName}\nSubject: ${subject}\nMessage: ${body}`,
+    { max_new_tokens: 180 }
+  )
+  return result[0]?.generated_text?.trim() || localReplyDraft(subject, body, senderName)
+}
+
+async function trueSlmPrioritize(subject: string, body: string, from: string): Promise<number> {
+  const pipeline = await getTrueSlmPipeline()
+  if (!pipeline) return localPrioritize(subject, body, from)
+  const result = await pipeline(
+    `Rate this email priority from 1 to 5 and output just one number.\nFrom: ${from}\nSubject: ${subject}\nBody: ${body}`,
+    { max_new_tokens: 8 }
+  )
+  const num = Number.parseInt(result[0]?.generated_text?.trim() || "", 10)
+  return Number.isNaN(num) ? localPrioritize(subject, body, from) : Math.min(5, Math.max(1, num))
+}
+
+function resolveLocalMode(options?: AIOptions): LocalAIMode {
+  if (options?.localMode) return options.localMode
+  return process.env.LOCAL_AI_MODE === "true-slm" ? "true-slm" : "heuristic"
+}
 
 function localSummarize(subject: string, body: string): string {
   const sentences = body.split(/[.!?]+/).filter(s => s.trim().length > MIN_SENTENCE_LENGTH)
@@ -67,11 +207,11 @@ function localReplyDraft(subject: string, body: string, senderName: string): str
   return `Hi ${firstName},\n\nThank you for your email regarding "${subject}". I've reviewed your message and will get back to you with a detailed response shortly.\n\nBest regards`
 }
 
-function localPrioritize(subject: string, body: string, _from: string): number {
+function localPrioritize(subject: string, body: string, from: string): number {
   const urgentKeywords = ["urgent", "asap", "immediately", "critical", "emergency"]
   const importantKeywords = ["important", "deadline", "meeting", "action required"]
   
-  const text = `${subject} ${body}`.toLowerCase()
+  const text = `${subject} ${body} ${from}`.toLowerCase()
   
   if (urgentKeywords.some(kw => text.includes(kw))) return 5
   if (importantKeywords.some(kw => text.includes(kw))) return 4
@@ -145,7 +285,7 @@ async function openaiSummarize(subject: string, body: string): Promise<string> {
       content: `Summarize this email in 2-3 sentences:\nSubject: ${subject}\n\n${body}`
     }]
   })
-  return completion.choices[0]?.message?.content || ""
+  return completion.choices?.[0]?.message?.content || ""
 }
 
 async function openaiReplyDraft(subject: string, body: string, senderName: string): Promise<string> {
@@ -163,7 +303,7 @@ async function openaiReplyDraft(subject: string, body: string, senderName: strin
       content: `Write a professional reply draft for this email:\nFrom: ${senderName}\nSubject: ${subject}\n\n${body}\n\nWrite only the reply body, no subject line.`
     }]
   })
-  return completion.choices[0]?.message?.content || ""
+  return completion.choices?.[0]?.message?.content || ""
 }
 
 async function openaiPrioritize(subject: string, body: string, from: string): Promise<number> {
@@ -181,14 +321,19 @@ async function openaiPrioritize(subject: string, body: string, from: string): Pr
       content: `Rate the priority of this email from 1-5 (5=urgent). Reply with only a number.\nFrom: ${from}\nSubject: ${subject}\n\n${body.substring(0, 500)}`
     }]
   })
-  const text = completion.choices[0]?.message?.content || "3"
+  const text = completion.choices?.[0]?.message?.content || "3"
   const num = parseInt(text.trim())
   return isNaN(num) ? 3 : Math.min(5, Math.max(1, num))
 }
 
 // Public API - automatically routes to the appropriate provider
 export async function summarizeEmail(subject: string, body: string): Promise<string> {
+  return summarizeEmailWithOptions(subject, body)
+}
+
+export async function summarizeEmailWithOptions(subject: string, body: string, options?: AIOptions): Promise<string> {
   const provider = getAIProvider()
+  const localMode = resolveLocalMode(options)
   
   try {
     switch (provider) {
@@ -197,7 +342,7 @@ export async function summarizeEmail(subject: string, body: string): Promise<str
       case "openai":
         return await openaiSummarize(subject, body)
       case "local":
-        return localSummarize(subject, body)
+        return localMode === "true-slm" ? await trueSlmSummarize(subject, body) : localSummarize(subject, body)
     }
   } catch (error) {
     console.error(`AI summarize error (${provider}):`, error)
@@ -206,7 +351,17 @@ export async function summarizeEmail(subject: string, body: string): Promise<str
 }
 
 export async function generateReplyDraft(subject: string, body: string, senderName: string): Promise<string> {
+  return generateReplyDraftWithOptions(subject, body, senderName)
+}
+
+export async function generateReplyDraftWithOptions(
+  subject: string,
+  body: string,
+  senderName: string,
+  options?: AIOptions
+): Promise<string> {
   const provider = getAIProvider()
+  const localMode = resolveLocalMode(options)
   
   try {
     switch (provider) {
@@ -215,7 +370,7 @@ export async function generateReplyDraft(subject: string, body: string, senderNa
       case "openai":
         return await openaiReplyDraft(subject, body, senderName)
       case "local":
-        return localReplyDraft(subject, body, senderName)
+        return localMode === "true-slm" ? await trueSlmReplyDraft(subject, body, senderName) : localReplyDraft(subject, body, senderName)
     }
   } catch (error) {
     console.error(`AI reply draft error (${provider}):`, error)
@@ -224,7 +379,17 @@ export async function generateReplyDraft(subject: string, body: string, senderNa
 }
 
 export async function prioritizeEmail(subject: string, body: string, from: string): Promise<number> {
+  return prioritizeEmailWithOptions(subject, body, from)
+}
+
+export async function prioritizeEmailWithOptions(
+  subject: string,
+  body: string,
+  from: string,
+  options?: AIOptions
+): Promise<number> {
   const provider = getAIProvider()
+  const localMode = resolveLocalMode(options)
   
   try {
     switch (provider) {
@@ -233,10 +398,14 @@ export async function prioritizeEmail(subject: string, body: string, from: strin
       case "openai":
         return await openaiPrioritize(subject, body, from)
       case "local":
-        return localPrioritize(subject, body, from)
+        return localMode === "true-slm" ? await trueSlmPrioritize(subject, body, from) : localPrioritize(subject, body, from)
     }
   } catch (error) {
     console.error(`AI prioritize error (${provider}):`, error)
     return localPrioritize(subject, body, from)
   }
+}
+
+export function getTrueSlmStatus(): TrueSlmStatus {
+  return { ...trueSlmStatus }
 }

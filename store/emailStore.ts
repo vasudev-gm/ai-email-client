@@ -8,6 +8,7 @@ interface EmailStore {
   isComposeOpen: boolean
   isSidebarOpen: boolean
   replyToEmailId: string | null
+  localAIMode: "heuristic" | "true-slm"
   setSelectedEmailId: (id: string | null) => void
   setCurrentFolder: (folder: string) => void
   setSearchQuery: (query: string) => void
@@ -15,6 +16,7 @@ interface EmailStore {
   setIsComposeOpen: (open: boolean) => void
   setIsSidebarOpen: (open: boolean) => void
   setReplyToEmailId: (id: string | null) => void
+  setLocalAIMode: (mode: "heuristic" | "true-slm") => void
 }
 
 export const useEmailStore = create<EmailStore>((set) => ({
@@ -25,6 +27,7 @@ export const useEmailStore = create<EmailStore>((set) => ({
   isComposeOpen: false,
   isSidebarOpen: false,
   replyToEmailId: null,
+  localAIMode: "heuristic",
   setSelectedEmailId: (id) => set({ selectedEmailId: id }),
   setCurrentFolder: (folder) => set({ currentFolder: folder, selectedEmailId: null }),
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -32,4 +35,5 @@ export const useEmailStore = create<EmailStore>((set) => ({
   setIsComposeOpen: (open) => set({ isComposeOpen: open }),
   setIsSidebarOpen: (open) => set({ isSidebarOpen: open }),
   setReplyToEmailId: (id) => set({ replyToEmailId: id }),
+  setLocalAIMode: (mode) => set({ localAIMode: mode }),
 }))

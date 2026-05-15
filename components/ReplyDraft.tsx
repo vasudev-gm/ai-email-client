@@ -6,22 +6,45 @@ import { Wand2, RefreshCw, Copy, ArrowRight } from "lucide-react"
 interface ReplyDraftProps {
   emailId: string
   onInsert: () => void
+  localAIMode: "heuristic" | "true-slm"
 }
 
-export default function ReplyDraft({ emailId, onInsert }: ReplyDraftProps) {
+export default function ReplyDraft({ emailId, onInsert, localAIMode }: ReplyDraftProps) {
   const [draft, setDraft] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
 
   const fetchDraft = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setDownloadProgress(0)
+
+    let statusInterval: ReturnType<typeof setInterval> | undefined
+    if (localAIMode === "true-slm") {
+      statusInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/emails/${emailId}/ai`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "modelStatus", localAIMode }),
+          })
+          const statusData = await statusRes.json()
+          if (typeof statusData.progress === "number") {
+            setDownloadProgress(statusData.progress)
+          }
+        } catch {
+          // ignore polling errors while generating
+        }
+      }, 500)
+    }
+
     try {
       const res = await fetch(`/api/emails/${emailId}/ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "draft" }),
+        body: JSON.stringify({ action: "draft", localAIMode }),
       })
       const data = await res.json()
       if (data.draft) {
@@ -32,9 +55,11 @@ export default function ReplyDraft({ emailId, onInsert }: ReplyDraftProps) {
     } catch {
       setError("Network error")
     } finally {
+      if (statusInterval) clearInterval(statusInterval)
+      if (localAIMode === "true-slm") setDownloadProgress(100)
       setLoading(false)
     }
-  }, [emailId])
+  }, [emailId, localAIMode])
 
   useEffect(() => {
     fetchDraft()
@@ -85,6 +110,14 @@ export default function ReplyDraft({ emailId, onInsert }: ReplyDraftProps) {
       </div>
       {loading && (
         <div className="space-y-2">
+          {localAIMode === "true-slm" && (
+            <>
+              <p className="text-xs text-blue-700">Downloading true local model… {downloadProgress}%</p>
+              <div className="h-2 bg-blue-200 rounded overflow-hidden">
+                <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
+              </div>
+            </>
+          )}
           <div className="h-3 bg-blue-200 rounded animate-pulse" />
           <div className="h-3 bg-blue-200 rounded animate-pulse w-5/6" />
           <div className="h-3 bg-blue-200 rounded animate-pulse w-4/6" />

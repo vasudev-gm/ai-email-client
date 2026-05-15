@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server"
 import { MOCK_EMAILS } from "@/lib/email-utils"
-import { summarizeEmail, generateReplyDraft, prioritizeEmail } from "@/lib/ai"
+import {
+  summarizeEmailWithOptions,
+  generateReplyDraftWithOptions,
+  prioritizeEmailWithOptions,
+  getTrueSlmStatus,
+} from "@/lib/ai"
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const { action } = await request.json()
+  const { action, localAIMode } = await request.json()
+
+  if (action === "modelStatus") {
+    return NextResponse.json(getTrueSlmStatus())
+  }
+
   const email = MOCK_EMAILS.find(e => e.id === id)
   
   if (!email) {
@@ -18,13 +28,13 @@ export async function POST(
 
   try {
     if (action === "summarize") {
-      const summary = await summarizeEmail(email.subject, body)
+      const summary = await summarizeEmailWithOptions(email.subject, body, { localMode: localAIMode })
       return NextResponse.json({ summary })
     } else if (action === "draft") {
-      const draft = await generateReplyDraft(email.subject, body, email.from)
+      const draft = await generateReplyDraftWithOptions(email.subject, body, email.from, { localMode: localAIMode })
       return NextResponse.json({ draft })
     } else if (action === "prioritize") {
-      const priority = await prioritizeEmail(email.subject, body, email.from)
+      const priority = await prioritizeEmailWithOptions(email.subject, body, email.from, { localMode: localAIMode })
       return NextResponse.json({ priority })
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 })

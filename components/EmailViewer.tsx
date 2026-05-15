@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { EmailData, extractDisplayName, extractEmailAddress } from "@/lib/email-utils"
+import { useEmailStore } from "@/store/emailStore"
 import AISummary from "./AISummary"
 import ReplyDraft from "./ReplyDraft"
 import { ArrowLeft, Star, Archive, Trash2, Reply, Forward } from "lucide-react"
@@ -15,6 +16,7 @@ interface EmailViewerProps {
 export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
+  const { localAIMode, setLocalAIMode } = useEmailStore()
 
   const date = new Date(email.date)
 
@@ -42,6 +44,15 @@ export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <select
+            value={localAIMode}
+            onChange={(e) => setLocalAIMode(e.target.value as "heuristic" | "true-slm")}
+            className="h-8 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700"
+            title="Fallback AI mode"
+          >
+            <option value="heuristic">Keyword Heuristics</option>
+            <option value="true-slm">True SLM (download model)</option>
+          </select>
           <button
             onClick={() => setShowAISummary(!showAISummary)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -91,12 +102,12 @@ export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps
 
           {/* AI Summary Panel */}
           {showAISummary && (
-            <AISummary emailId={email.id} />
+            <AISummary emailId={email.id} localAIMode={localAIMode} />
           )}
 
           {/* AI Reply Draft */}
           {showReplyDraft && (
-            <ReplyDraft emailId={email.id} onInsert={onReply} />
+            <ReplyDraft emailId={email.id} onInsert={onReply} localAIMode={localAIMode} />
           )}
 
           {/* Email body */}
