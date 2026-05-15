@@ -46,6 +46,8 @@ export default function EmailList({
     () => new Map(emails.map((email) => [email.id, email.isRead])),
     [emails]
   )
+  const hasUnreadEmails = useMemo(() => emails.some((email) => !email.isRead), [emails])
+  const hasReadEmails = useMemo(() => emails.some((email) => email.isRead), [emails])
   const allSelected = selectableIds.length > 0 && selectedIds.length === selectableIds.length
 
   const toggleSelection = (id: string) => {
@@ -150,12 +152,14 @@ export default function EmailList({
         <div className="flex items-center gap-2">
           <button
             onClick={() => runBulkAction("markRead", selectableIds)}
+            disabled={!hasUnreadEmails}
             className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 disabled:opacity-40"
           >
             Mark all read
           </button>
           <button
             onClick={() => runBulkAction("markUnread", selectableIds)}
+            disabled={!hasReadEmails}
             className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 disabled:opacity-40"
           >
             Mark all unread

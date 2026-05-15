@@ -98,7 +98,7 @@ export default function Home() {
 
       try {
         const response = await fetch(`/api/emails/${selectedEmailId}`)
-        if (!response.ok) throw new Error("Email fetch failed")
+        if (!response.ok) throw new Error(`Failed to fetch email (status: ${response.status})`)
         const data = await response.json()
         if (!isCancelled) {
           setSelectedEmail(data)
@@ -170,8 +170,11 @@ export default function Home() {
         })
       )
     )
-    if (responses.some((response) => !response.ok)) {
-      console.error("Bulk email update failed for one or more messages")
+    const failedIds = responses
+      .map((response, index) => (!response.ok ? ids[index] : null))
+      .filter((id): id is string => Boolean(id))
+    if (failedIds.length > 0) {
+      console.error(`Bulk email update failed for IDs: ${failedIds.join(", ")}`)
       return
     }
 
@@ -184,7 +187,7 @@ export default function Home() {
     if (!selectedEmailId) return
     const response = await fetch(`/api/emails/${selectedEmailId}`, { method: "DELETE" })
     if (!response.ok) {
-      console.error("Failed to delete email")
+      console.error(`Failed to delete email (status: ${response.status})`)
       return
     }
     setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
@@ -201,7 +204,7 @@ export default function Home() {
       body: JSON.stringify({ isDeleted: false }),
     })
     if (!response.ok) {
-      console.error("Failed to restore email")
+      console.error(`Failed to restore email (status: ${response.status})`)
       return
     }
     setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
