@@ -55,7 +55,14 @@ export default function Home() {
         const data = await response.json()
         if (!isCancelled) {
           setEmails(data.emails || [])
-          void refreshFolderCounts()
+          const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
+          const [inboxRes, deletedRes] = await Promise.all([
+            fetch(`/api/emails?folder=INBOX${accountQuery}`),
+            fetch(`/api/emails?folder=DELETED${accountQuery}`),
+          ])
+          const [inboxData, deletedData] = await Promise.all([inboxRes.json(), deletedRes.json()])
+          setInboxUnreadCount((inboxData.emails || []).filter((email: EmailData) => !email.isRead).length)
+          setDeletedCount((deletedData.emails || []).length)
         }
       } finally {
         if (!isCancelled) {
@@ -67,7 +74,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts])
+  }, [currentFolder, searchQuery, selectedAccountId])
 
   useEffect(() => {
     let isCancelled = false
@@ -90,7 +97,10 @@ export default function Home() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ isRead: true }),
             })
-            void refreshFolderCounts()
+            const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
+            const inboxRes = await fetch(`/api/emails?folder=INBOX${accountQuery}`)
+            const inboxData = await inboxRes.json()
+            setInboxUnreadCount((inboxData.emails || []).filter((email: EmailData) => !email.isRead).length)
           }
           setEmails((current) =>
             current.map((email) =>
@@ -108,7 +118,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [selectedEmailId, refreshFolderCounts])
+  }, [selectedEmailId, selectedAccountId])
 
   const handleSendEmail = async (data: {
     to: string

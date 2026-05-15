@@ -17,7 +17,6 @@ interface EmailViewerProps {
 export default function EmailViewer({ email, onBack, onReply, onDelete, onRestore }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
-  const localAIMode = "heuristic" as const
 
   const date = new Date(email.date)
 
@@ -102,7 +101,7 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
           {showAISummary && (
             <AISummary
               emailId={email.id}
-              localAIMode={localAIMode}
+              localAIMode="heuristic"
               onClose={() => setShowAISummary(false)}
             />
           )}
@@ -112,7 +111,7 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
             <ReplyDraft
               emailId={email.id}
               onInsert={onReply}
-              localAIMode={localAIMode}
+              localAIMode="heuristic"
               onClose={() => setShowReplyDraft(false)}
             />
           )}
