@@ -57,7 +57,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | **AI Provider** (choose one or none) | | |
 | `ANTHROPIC_API_KEY` | No | Anthropic Claude API key (recommended) |
 | `OPENAI_API_KEY` | No | OpenAI API key (alternative) |
-| `OPENAI_MODEL` | No | OpenAI model: gpt-4o, gpt-4-turbo, gpt-3.5-turbo (default: gpt-4o) |
+| `OPENAI_MODEL` | No | OpenAI model: gpt-5.4-nano, gpt-5.5, gpt-5.4-mini (default: gpt-5.4-nano) |
 | **Email OAuth** | | |
 | `GOOGLE_CLIENT_ID` | No | Google OAuth — required for Gmail accounts |
 | `GOOGLE_CLIENT_SECRET` | No | Google OAuth secret |

@@ -1,5 +1,10 @@
 import type { NextConfig } from "next"
 
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['172.24.176.1'],
+}
+
 const nextConfig: NextConfig = {
   headers: async () => [
     {
