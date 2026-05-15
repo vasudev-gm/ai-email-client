@@ -7,6 +7,7 @@ import EmailViewer from "@/components/EmailViewer"
 import Composer from "@/components/Composer"
 import SearchBar from "@/components/SearchBar"
 import AccountSwitcher from "@/components/AccountSwitcher"
+import ThemeToggle from "@/components/ThemeToggle"
 import { useEmailStore } from "@/store/emailStore"
 import { EmailData } from "@/lib/email-utils"
 import { PenSquare, Menu } from "lucide-react"
@@ -214,7 +215,7 @@ export default function Home() {
   }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden">
       {/* Mobile sidebar overlay */}
       {isSidebarOpen && (
         <div
@@ -236,17 +237,18 @@ export default function Home() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex-1">
-            <SearchBar />
-          </div>
-          <AccountSwitcher />
+           <div className="flex-1">
+             <SearchBar />
+           </div>
+           <ThemeToggle />
+           <AccountSwitcher />
           <button
             onClick={() => setIsComposeOpen(true)}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
@@ -260,7 +262,7 @@ export default function Home() {
         <div className="flex-1 flex overflow-hidden">
           {/* Email list */}
           <div className={`
-            w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto
+            w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-y-auto
             ${selectedEmailId ? "hidden md:block" : "block"}
           `}>
             <EmailList
@@ -275,7 +277,7 @@ export default function Home() {
 
           {/* Email viewer */}
           <div className={`
-            flex-1 bg-white overflow-y-auto
+            flex-1 bg-white dark:bg-gray-900 overflow-y-auto
             ${selectedEmailId ? "block" : "hidden md:flex md:items-center md:justify-center"}
           `}>
             {selectedEmail ? (

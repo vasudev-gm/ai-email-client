@@ -40,7 +40,7 @@ describe("EmailList", () => {
     )
 
     fireEvent.click(screen.getByLabelText(/select all/i))
-    fireEvent.click(screen.getByRole("button", { name: /archive selected/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^archive$/i }))
     expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "archive")
   })
 
@@ -56,6 +56,7 @@ describe("EmailList", () => {
       />
     )
 
+    fireEvent.click(screen.getByText(/read status/i))
     fireEvent.click(screen.getByRole("button", { name: /mark all read/i }))
     expect(onBulkAction).toHaveBeenCalledWith(["1"], "markRead")
   })

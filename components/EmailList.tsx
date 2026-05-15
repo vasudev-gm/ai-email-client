@@ -100,26 +100,31 @@ export default function EmailList({
   }
 
   return (
-    <div className="divide-y divide-gray-100">
-      <div className="sticky top-0 z-10 bg-white px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-        <label className="flex items-center gap-2 text-xs text-gray-600">
+    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+        <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
           <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
           Select all
         </label>
-        <div className="flex items-center gap-2">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          {selectedIds.length > 0 ? `${selectedIds.length} selected` : "No selection"}
+        </div>
+      </div>
+      <div className="sticky top-[41px] z-10 bg-white dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             disabled={selectedIds.length === 0}
             onClick={() => runBulkAction("star")}
             className="text-xs px-2 py-1 rounded bg-yellow-50 text-yellow-700 disabled:opacity-40"
           >
-            Star selected
+            Star
           </button>
           <button
             disabled={selectedIds.length === 0}
             onClick={() => runBulkAction("archive")}
             className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-40"
           >
-            Archive selected
+            Archive
           </button>
           {currentFolder === "DELETED" && (
             <button
@@ -127,43 +132,46 @@ export default function EmailList({
               onClick={() => runBulkAction("restore")}
               className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 disabled:opacity-40"
             >
-              Restore selected
+              Restore
             </button>
           )}
         </div>
-      </div>
-      <div className="sticky top-[41px] z-10 bg-white px-4 py-2 border-b border-gray-200 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => runBulkAction("markRead")}
-            disabled={selectedIds.length === 0}
-            className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 disabled:opacity-40"
-          >
-            Mark selected read
-          </button>
-          <button
-            onClick={() => runBulkAction("markUnread")}
-            disabled={selectedIds.length === 0}
-            className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 disabled:opacity-40"
-          >
-            Mark selected unread
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => runBulkAction("markRead", selectableIds)}
-            disabled={!hasUnreadEmails}
-            className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 disabled:opacity-40"
-          >
-            Mark all read
-          </button>
-          <button
-            onClick={() => runBulkAction("markUnread", selectableIds)}
-            disabled={!hasReadEmails}
-            className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 disabled:opacity-40"
-          >
-            Mark all unread
-          </button>
+          <details className="relative">
+            <summary className="list-none cursor-pointer text-xs px-2 py-1 rounded bg-blue-50 text-blue-700">
+              Read status
+            </summary>
+            <div className="absolute right-0 mt-1 w-40 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg p-1 z-20">
+              <button
+                onClick={() => runBulkAction("markRead")}
+                disabled={selectedIds.length === 0}
+                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                Mark selected read
+              </button>
+              <button
+                onClick={() => runBulkAction("markUnread")}
+                disabled={selectedIds.length === 0}
+                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                Mark selected unread
+              </button>
+              <button
+                onClick={() => runBulkAction("markRead", selectableIds)}
+                disabled={!hasUnreadEmails}
+                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                Mark all read
+              </button>
+              <button
+                onClick={() => runBulkAction("markUnread", selectableIds)}
+                disabled={!hasReadEmails}
+                className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                Mark all unread
+              </button>
+            </div>
+          </details>
         </div>
       </div>
       {emails.map((email) => (
