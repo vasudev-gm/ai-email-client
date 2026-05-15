@@ -28,7 +28,9 @@ async function getOpenAIClient() {
   
   try {
     // Try to dynamically import OpenAI - it's an optional dependency
-    // Using Function constructor to avoid TypeScript checking the import
+    // Using Function constructor to bypass TypeScript's static import checking
+    // This allows the app to build without the openai package installed
+    // @ts-ignore - intentional use of Function constructor for optional dependency
     const importOpenAI = new Function('return import("openai")')
     const openaiModule = await importOpenAI().catch(() => null)
     
@@ -52,8 +54,10 @@ async function getOpenAIClient() {
 }
 
 // Local SLM fallback using simple heuristics
+const MIN_SENTENCE_LENGTH = 20
+
 function localSummarize(subject: string, body: string): string {
-  const sentences = body.split(/[.!?]+/).filter(s => s.trim().length > 20)
+  const sentences = body.split(/[.!?]+/).filter(s => s.trim().length > MIN_SENTENCE_LENGTH)
   const summary = sentences.slice(0, 2).join(". ").trim()
   return summary || `Email about: ${subject}`
 }
@@ -63,7 +67,7 @@ function localReplyDraft(subject: string, body: string, senderName: string): str
   return `Hi ${firstName},\n\nThank you for your email regarding "${subject}". I've reviewed your message and will get back to you with a detailed response shortly.\n\nBest regards`
 }
 
-function localPrioritize(subject: string, body: string, from: string): number {
+function localPrioritize(subject: string, body: string, _from: string): number {
   const urgentKeywords = ["urgent", "asap", "immediately", "critical", "emergency"]
   const importantKeywords = ["important", "deadline", "meeting", "action required"]
   
