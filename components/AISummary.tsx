@@ -67,9 +67,9 @@ export default function AISummary({ emailId, localAIMode, onClose }: AISummaryPr
   }, [fetchSummary])
 
   return (
-    <div className="mb-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
+    <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/30 rounded-xl border border-purple-100 dark:border-purple-800/60">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-purple-700 font-medium text-sm">
+        <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-medium text-sm">
           <Sparkles className="w-4 h-4" />
           AI Summary
         </div>
@@ -77,17 +77,17 @@ export default function AISummary({ emailId, localAIMode, onClose }: AISummaryPr
           <button
             onClick={fetchSummary}
             disabled={loading}
-            className="p-1 rounded hover:bg-purple-100 transition-colors"
+            className="p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-800/50 transition-colors"
             aria-label="Refresh summary"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-purple-500 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-purple-500 dark:text-purple-300 ${loading ? "animate-spin" : ""}`} />
           </button>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-purple-100 transition-colors"
+            className="p-1 rounded hover:bg-purple-100 dark:hover:bg-purple-800/50 transition-colors"
             aria-label="Close summary"
           >
-            <X className="w-3.5 h-3.5 text-purple-500" />
+            <X className="w-3.5 h-3.5 text-purple-500 dark:text-purple-300" />
           </button>
         </div>
       </div>
@@ -95,19 +95,19 @@ export default function AISummary({ emailId, localAIMode, onClose }: AISummaryPr
         <div className="space-y-2">
           {localAIMode === "true-slm" && (
             <>
-              <p className="text-xs text-purple-700">Preparing private local AI… {downloadProgress}%</p>
-              <div className="h-2 bg-purple-200 rounded overflow-hidden">
+              <p className="text-xs text-purple-700 dark:text-purple-300">Preparing private local AI… {downloadProgress}%</p>
+              <div className="h-2 bg-purple-200 dark:bg-purple-800 rounded overflow-hidden">
                 <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
               </div>
             </>
           )}
-          <div className="h-3 bg-purple-200 rounded animate-pulse" />
-          <div className="h-3 bg-purple-200 rounded animate-pulse w-4/5" />
+          <div className="h-3 bg-purple-200 dark:bg-purple-800 rounded animate-pulse" />
+          <div className="h-3 bg-purple-200 dark:bg-purple-800 rounded animate-pulse w-4/5" />
         </div>
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
       {summary && !loading && (
-        <p className="text-sm text-purple-800 leading-relaxed">{summary}</p>
+        <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed">{summary}</p>
       )}
     </div>
   )

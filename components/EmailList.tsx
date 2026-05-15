@@ -95,8 +95,8 @@ export default function EmailList({
       <div className="p-4 space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-            <div className="h-3 bg-gray-200 rounded w-1/2" />
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -105,9 +105,9 @@ export default function EmailList({
 
   if (emails.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
         <div className="text-4xl mb-3">📭</div>
-        <p className="font-medium">No emails found</p>
+        <p className="font-medium text-gray-600 dark:text-gray-300">No emails found</p>
         <p className="text-sm mt-1">Your folder is empty</p>
       </div>
     )
@@ -129,14 +129,14 @@ export default function EmailList({
           <button
             disabled={selectedIds.length === 0}
             onClick={() => runBulkAction("star")}
-            className="text-xs px-2 py-1 rounded bg-yellow-50 text-yellow-700 disabled:opacity-40"
+            className="text-xs px-2 py-1 rounded bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 disabled:opacity-40"
           >
             Star
           </button>
           <button
             disabled={selectedIds.length === 0}
             onClick={() => runBulkAction("archive")}
-            className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-40"
+            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 disabled:opacity-40"
           >
             Archive
           </button>
@@ -144,7 +144,7 @@ export default function EmailList({
             <button
               disabled={selectedIds.length === 0}
               onClick={() => runBulkAction("restore")}
-              className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 disabled:opacity-40"
+                className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 disabled:opacity-40"
             >
               Restore
             </button>
@@ -158,7 +158,7 @@ export default function EmailList({
               aria-expanded={isReadMenuOpen}
               aria-label="Read status actions"
               onClick={() => setIsReadMenuOpen((current) => !current)}
-              className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700"
+              className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
             >
               Read status
             </button>
@@ -172,7 +172,7 @@ export default function EmailList({
                   role="menuitem"
                   onClick={() => runBulkAction("markRead")}
                   disabled={selectedIds.length === 0}
-                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
                 >
                   Mark selected read
                 </button>
@@ -180,7 +180,7 @@ export default function EmailList({
                   role="menuitem"
                   onClick={() => runBulkAction("markUnread")}
                   disabled={selectedIds.length === 0}
-                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
                 >
                   Mark selected unread
                 </button>
@@ -188,7 +188,7 @@ export default function EmailList({
                   role="menuitem"
                   onClick={() => runBulkAction("markRead", selectableIds)}
                   disabled={!hasUnreadEmails}
-                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
                 >
                   Mark all read
                 </button>
@@ -196,7 +196,7 @@ export default function EmailList({
                   role="menuitem"
                   onClick={() => runBulkAction("markUnread", selectableIds)}
                   disabled={!hasReadEmails}
-                  className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
                 >
                   Mark all unread
                 </button>
@@ -210,9 +210,9 @@ export default function EmailList({
           key={email.id}
           onClick={() => onSelectEmail(email.id)}
           className={`
-            w-full text-left p-4 hover:bg-gray-50 transition-colors
-            ${selectedEmailId === email.id ? "bg-blue-50 border-l-2 border-l-blue-600" : ""}
-            ${!email.isRead ? "bg-white" : "bg-gray-50/50"}
+            w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+            ${selectedEmailId === email.id ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-600" : ""}
+            ${!email.isRead ? "bg-white dark:bg-gray-900" : "bg-gray-50/50 dark:bg-gray-800/40"}
           `}
         >
           <div className="flex items-start justify-between gap-2 mb-1">
@@ -227,7 +227,7 @@ export default function EmailList({
               {!email.isRead && (
                 <div className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" />
               )}
-              <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-gray-900" : "font-medium text-gray-600"}`}>
+              <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-gray-900 dark:text-gray-100" : "font-medium text-gray-600 dark:text-gray-300"}`}>
                 {extractDisplayName(email.from)}
               </span>
             </div>
@@ -238,15 +238,15 @@ export default function EmailList({
                   {priorityLabels[email.aiPriority]}
                 </span>
               )}
-              <span className="text-xs text-gray-400 whitespace-nowrap">
+              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                 {formatEmailDate(email.date)}
               </span>
             </div>
           </div>
-          <p className={`text-sm truncate mb-1 ${!email.isRead ? "font-medium text-gray-800" : "text-gray-600"}`}>
+          <p className={`text-sm truncate mb-1 ${!email.isRead ? "font-medium text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
             {email.subject}
           </p>
-          <p className="text-xs text-gray-400 truncate">
+          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
             {truncateText(email.bodyText || "", 80)}
           </p>
         </button>

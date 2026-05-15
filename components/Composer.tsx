@@ -67,11 +67,11 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="relative bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col border border-transparent dark:border-gray-700">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">New Message</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Message</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -79,18 +79,18 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
         {/* Form */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 space-y-0">
-            <div className="flex items-center border-b border-gray-200 py-2">
-              <label className="text-sm text-gray-500 w-14 flex-shrink-0">To</label>
+            <div className="flex items-center border-b border-gray-200 dark:border-gray-700 py-2">
+              <label className="text-sm text-gray-500 dark:text-gray-400 w-14 flex-shrink-0">To</label>
               <input
                 type="text"
                 placeholder="recipient@example.com, team@example.com"
                 value={to}
                 onChange={e => setTo(e.target.value)}
-                className="flex-1 text-sm outline-none placeholder-gray-400"
+                className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500"
               />
               <button
                 onClick={() => setShowCc(!showCc)}
-                className="text-xs text-gray-400 hover:text-gray-600 ml-2"
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ml-2"
               >
                 Cc/Bcc
               </button>
@@ -98,37 +98,37 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
 
             {showCc && (
               <>
-                <div className="flex items-center border-b border-gray-200 py-2">
-                  <label className="text-sm text-gray-500 w-14 flex-shrink-0">Cc</label>
+                <div className="flex items-center border-b border-gray-200 dark:border-gray-700 py-2">
+                  <label className="text-sm text-gray-500 dark:text-gray-400 w-14 flex-shrink-0">Cc</label>
                   <input
                     type="text"
                     placeholder="cc@example.com, team@example.com"
                     value={cc}
                     onChange={e => setCc(e.target.value)}
-                    className="flex-1 text-sm outline-none placeholder-gray-400"
+                    className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
-                <div className="flex items-center border-b border-gray-200 py-2">
-                  <label className="text-sm text-gray-500 w-14 flex-shrink-0">Bcc</label>
+                <div className="flex items-center border-b border-gray-200 dark:border-gray-700 py-2">
+                  <label className="text-sm text-gray-500 dark:text-gray-400 w-14 flex-shrink-0">Bcc</label>
                   <input
                     type="text"
                     placeholder="bcc@example.com, team@example.com"
                     value={bcc}
                     onChange={e => setBcc(e.target.value)}
-                    className="flex-1 text-sm outline-none placeholder-gray-400"
+                    className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
               </>
             )}
 
-            <div className="flex items-center border-b border-gray-200 py-2">
-              <label className="text-sm text-gray-500 w-14 flex-shrink-0">Subject</label>
+            <div className="flex items-center border-b border-gray-200 dark:border-gray-700 py-2">
+              <label className="text-sm text-gray-500 dark:text-gray-400 w-14 flex-shrink-0">Subject</label>
               <input
                 type="text"
                 placeholder="Email subject"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
-                className="flex-1 text-sm outline-none placeholder-gray-400"
+                className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
 
@@ -136,22 +136,22 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
               placeholder="Write your message..."
               value={content}
               onChange={e => setContent(e.target.value)}
-              className="w-full text-sm outline-none placeholder-gray-400 min-h-48 pt-3 resize-none"
+              className="w-full text-sm text-gray-900 dark:text-gray-100 bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 min-h-48 pt-3 resize-none"
             />
             {error && <p className="text-xs text-red-600 pt-2">{error}</p>}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-lg transition-colors">
             <Wand2 className="w-4 h-4" />
             AI Assist
           </button>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               Cancel
             </button>

@@ -240,7 +240,7 @@ export default function Home() {
          <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -289,9 +289,9 @@ export default function Home() {
                   onRestore={handleRestoreEmail}
                 />
             ) : (
-              <div className="text-center text-gray-400">
+              <div className="text-center text-gray-400 dark:text-gray-500">
                 <div className="text-6xl mb-4">✉️</div>
-                <p className="text-lg font-medium">Select an email to read</p>
+                <p className="text-lg font-medium text-gray-600 dark:text-gray-300">Select an email to read</p>
                 <p className="text-sm mt-1">Choose from your {currentFolder.toLowerCase()} on the left</p>
               </div>
             )}

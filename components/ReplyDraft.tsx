@@ -77,9 +77,9 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
   }
 
   return (
-    <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl border border-blue-100 dark:border-blue-800/60">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-blue-700 font-medium text-sm">
+        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium text-sm">
           <Wand2 className="w-4 h-4" />
           AI Reply Draft
         </div>
@@ -87,18 +87,18 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
           <button
             onClick={fetchDraft}
             disabled={loading}
-            className="p-1 rounded hover:bg-blue-100 transition-colors"
+            className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-blue-500 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-blue-500 dark:text-blue-300 ${loading ? "animate-spin" : ""}`} />
           </button>
           {draft && (
             <>
               <button
                 onClick={handleCopy}
-                className="p-1 rounded hover:bg-blue-100 transition-colors"
+                className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
                 title="Copy to clipboard"
               >
-                <Copy className="w-3.5 h-3.5 text-blue-500" />
+                <Copy className="w-3.5 h-3.5 text-blue-500 dark:text-blue-300" />
               </button>
               <button
                 onClick={onInsert}
@@ -111,10 +111,10 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
           )}
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-blue-100 transition-colors"
+            className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
             aria-label="Close draft"
           >
-            <X className="w-3.5 h-3.5 text-blue-500" />
+            <X className="w-3.5 h-3.5 text-blue-500 dark:text-blue-300" />
           </button>
         </div>
       </div>
@@ -122,22 +122,22 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
         <div className="space-y-2">
           {localAIMode === "true-slm" && (
             <>
-              <p className="text-xs text-blue-700">Preparing private local AI… {downloadProgress}%</p>
-              <div className="h-2 bg-blue-200 rounded overflow-hidden">
+              <p className="text-xs text-blue-700 dark:text-blue-300">Preparing private local AI… {downloadProgress}%</p>
+              <div className="h-2 bg-blue-200 dark:bg-blue-800 rounded overflow-hidden">
                 <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${downloadProgress}%` }} />
               </div>
             </>
           )}
-          <div className="h-3 bg-blue-200 rounded animate-pulse" />
-          <div className="h-3 bg-blue-200 rounded animate-pulse w-5/6" />
-          <div className="h-3 bg-blue-200 rounded animate-pulse w-4/6" />
+          <div className="h-3 bg-blue-200 dark:bg-blue-800 rounded animate-pulse" />
+          <div className="h-3 bg-blue-200 dark:bg-blue-800 rounded animate-pulse w-5/6" />
+          <div className="h-3 bg-blue-200 dark:bg-blue-800 rounded animate-pulse w-4/6" />
         </div>
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
       {draft && !loading && (
         <div>
           {copied && <p className="text-xs text-green-600 mb-1">Copied to clipboard!</p>}
-          <p className="text-sm text-blue-800 leading-relaxed whitespace-pre-wrap">{draft}</p>
+          <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed whitespace-pre-wrap">{draft}</p>
         </div>
       )}
     </div>

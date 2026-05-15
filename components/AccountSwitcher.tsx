@@ -62,7 +62,7 @@ export default function AccountSwitcher() {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-controls="account-menu"
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-semibold"
@@ -70,16 +70,16 @@ export default function AccountSwitcher() {
         >
           {selectedAccount.email[0].toUpperCase()}
         </div>
-        <span className="text-sm text-gray-700 hidden sm:block max-w-32 truncate">
+        <span className="text-sm text-gray-700 dark:text-gray-200 hidden sm:block max-w-32 truncate">
           {selectedAccount.email}
         </span>
-        <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+        <ChevronDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
       </button>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div id="account-menu" role="menu" className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-lg border border-gray-200 z-20 overflow-hidden">
+          <div id="account-menu" role="menu" className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-20 overflow-hidden">
             <div className="p-2">
               {accounts.map((account) => (
                 <button
@@ -91,7 +91,7 @@ export default function AccountSwitcher() {
                     setSelectedAccountId(account.id)
                     setIsOpen(false)
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
@@ -100,8 +100,8 @@ export default function AccountSwitcher() {
                     {account.email[0].toUpperCase()}
                   </div>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{account.email}</p>
-                    <p className="text-xs text-gray-500">{account.provider}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{account.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{account.provider}</p>
                   </div>
                   {selectedAccount?.id === account.id && (
                     <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -109,11 +109,11 @@ export default function AccountSwitcher() {
                 </button>
               ))}
             </div>
-            <div className="border-t border-gray-100 p-2">
+            <div className="border-t border-gray-100 dark:border-gray-700 p-2">
               <button
                 type="button"
                 onClick={() => setIsAdding(true)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-blue-600"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm text-blue-600 dark:text-blue-400"
               >
                 <Plus className="w-4 h-4" />
                 Add account
@@ -134,23 +134,23 @@ export default function AccountSwitcher() {
             onKeyDown={(event) => {
               if (event.key === "Escape") closeAddDialog()
             }}
-            className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-4 space-y-3"
+            className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-4 space-y-3 border border-transparent dark:border-gray-700"
           >
-            <h3 id="add-account-title" className="text-sm font-semibold text-gray-900">Add account</h3>
-            <label htmlFor="new-account-email" className="text-xs text-gray-600 block">Email</label>
+            <h3 id="add-account-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add account</h3>
+            <label htmlFor="new-account-email" className="text-xs text-gray-600 dark:text-gray-300 block">Email</label>
             <input
               id="new-account-email"
               value={newEmail}
               onChange={(event) => setNewEmail(event.target.value)}
               placeholder="name@example.com"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             />
-            <label htmlFor="new-account-provider" className="text-xs text-gray-600 block">Provider</label>
+            <label htmlFor="new-account-provider" className="text-xs text-gray-600 dark:text-gray-300 block">Provider</label>
             <select
               id="new-account-provider"
               value={newProvider}
               onChange={(event) => setNewProvider(event.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             >
               <option value="Google">Google</option>
               <option value="Microsoft">Microsoft</option>
@@ -160,7 +160,7 @@ export default function AccountSwitcher() {
               <p className="text-xs text-red-600" role="status" aria-live="polite">{error}</p>
             )}
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={closeAddDialog} className="px-3 py-1.5 text-sm text-gray-600">
+              <button type="button" onClick={closeAddDialog} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
                 Cancel
               </button>
               <button type="button" onClick={handleAddAccount} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded">
