@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const search = searchParams.get("search") || ""
   const accountId = searchParams.get("accountId") || ""
 
-  let emails = MOCK_EMAILS.filter((email) => !email.isDeleted)
+  let emails = MOCK_EMAILS
 
   if (accountId) {
     emails = emails.filter((email) => email.accountId === accountId)
@@ -16,13 +16,17 @@ export async function GET(request: Request) {
   if (folder === "INBOX") {
     emails = emails.filter(e => !e.isSent && !e.isDraft && !e.isArchived && !e.isDeleted)
   } else if (folder === "SENT") {
-    emails = emails.filter(e => e.isSent)
+    emails = emails.filter(e => e.isSent && !e.isDeleted)
   } else if (folder === "DRAFTS") {
-    emails = emails.filter(e => e.isDraft)
+    emails = emails.filter(e => e.isDraft && !e.isDeleted)
   } else if (folder === "ARCHIVED") {
-    emails = emails.filter(e => e.isArchived)
+    emails = emails.filter(e => e.isArchived && !e.isDeleted)
   } else if (folder === "STARRED") {
-    emails = emails.filter(e => e.isStarred)
+    emails = emails.filter(e => e.isStarred && !e.isDeleted)
+  } else if (folder === "DELETED") {
+    emails = emails.filter(e => e.isDeleted)
+  } else {
+    emails = emails.filter((email) => !email.isDeleted)
   }
 
   if (search) {

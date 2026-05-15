@@ -2,18 +2,24 @@
 
 import { useEmailStore } from "@/store/emailStore"
 import { 
-  Inbox, Star, Send, FileText, Archive, Settings
+  Inbox, Star, Send, FileText, Archive, Trash2, Settings
 } from "lucide-react"
 
-const folders = [
-  { id: "INBOX", label: "Inbox", icon: Inbox, count: 3 },
+interface SidebarProps {
+  inboxUnreadCount: number
+  deletedCount: number
+}
+
+export default function Sidebar({ inboxUnreadCount, deletedCount }: SidebarProps) {
+  const folders = [
+  { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount },
   { id: "STARRED", label: "Starred", icon: Star },
   { id: "SENT", label: "Sent", icon: Send },
   { id: "DRAFTS", label: "Drafts", icon: FileText },
   { id: "ARCHIVED", label: "Archived", icon: Archive },
+  { id: "DELETED", label: "Deleted", icon: Trash2, count: deletedCount || undefined },
 ]
 
-export default function Sidebar() {
   const { currentFolder, setCurrentFolder, setIsSidebarOpen } = useEmailStore()
 
   const handleFolderClick = (folderId: string) => {

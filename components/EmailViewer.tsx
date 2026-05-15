@@ -5,18 +5,20 @@ import { EmailData, extractDisplayName, extractEmailAddress } from "@/lib/email-
 import { useEmailStore } from "@/store/emailStore"
 import AISummary from "./AISummary"
 import ReplyDraft from "./ReplyDraft"
-import { ArrowLeft, Star, Archive, Trash2, Reply, Forward } from "lucide-react"
+import { ArrowLeft, Star, Archive, Trash2, Reply, Forward, RotateCcw } from "lucide-react"
 
 interface EmailViewerProps {
   email: EmailData
   onBack: () => void
   onReply: () => void
+  onDelete: () => void
+  onRestore: () => void
 }
 
-export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps) {
+export default function EmailViewer({ email, onBack, onReply, onDelete, onRestore }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
-  const { localAIMode, setLocalAIMode } = useEmailStore()
+  const { localAIMode } = useEmailStore()
 
   const date = new Date(email.date)
 
@@ -35,29 +37,21 @@ export default function EmailViewer({ email, onBack, onReply }: EmailViewerProps
             <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
               <Archive className="w-4 h-4" />
             </button>
-            <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
+            {!email.isDeleted ? (
+              <button onClick={onDelete} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600" aria-label="Delete email">
               <Trash2 className="w-4 h-4" />
             </button>
+            ) : (
+              <button onClick={onRestore} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600" aria-label="Restore email">
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            )}
             <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
               <Star className={`w-4 h-4 ${email.isStarred ? "text-yellow-400 fill-yellow-400" : ""}`} />
             </button>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <div className="hidden md:flex items-center rounded-lg border border-gray-300 overflow-hidden">
-            <button
-              onClick={() => setLocalAIMode("heuristic")}
-              className={`px-2 py-1 text-xs ${localAIMode === "heuristic" ? "bg-gray-900 text-white" : "bg-white text-gray-600"}`}
-            >
-              Fast AI
-            </button>
-            <button
-              onClick={() => setLocalAIMode("true-slm")}
-              className={`px-2 py-1 text-xs ${localAIMode === "true-slm" ? "bg-gray-900 text-white" : "bg-white text-gray-600"}`}
-            >
-              Private Local (beta)
-            </button>
-          </div>
           <button
             onClick={() => setShowAISummary(!showAISummary)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${

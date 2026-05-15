@@ -6,9 +6,13 @@ import { Star } from "lucide-react"
 
 interface EmailListProps {
   emails: EmailData[]
+  currentFolder: string
   selectedEmailId: string | null
   onSelectEmail: (id: string) => void
-  onBulkAction?: (ids: string[], action: "archive" | "star") => Promise<void> | void
+  onBulkAction?: (
+    ids: string[],
+    action: "archive" | "star" | "markRead" | "markUnread" | "restore"
+  ) => Promise<void> | void
   loading?: boolean
 }
 
@@ -28,7 +32,14 @@ const priorityLabels: Record<number, string> = {
   1: "Min",
 }
 
-export default function EmailList({ emails, selectedEmailId, onSelectEmail, onBulkAction, loading }: EmailListProps) {
+export default function EmailList({
+  emails,
+  currentFolder,
+  selectedEmailId,
+  onSelectEmail,
+  onBulkAction,
+  loading,
+}: EmailListProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const selectableIds = useMemo(() => emails.map((email) => email.id), [emails])
   const allSelected = selectableIds.length > 0 && selectedIds.length === selectableIds.length
@@ -43,9 +54,12 @@ export default function EmailList({ emails, selectedEmailId, onSelectEmail, onBu
     setSelectedIds(allSelected ? [] : selectableIds)
   }
 
-  const runBulkAction = (action: "archive" | "star") => {
-    if (!selectedIds.length || !onBulkAction) return
-    onBulkAction(selectedIds, action)
+  const runBulkAction = (
+    action: "archive" | "star" | "markRead" | "markUnread" | "restore",
+    ids = selectedIds
+  ) => {
+    if (!ids.length || !onBulkAction) return
+    onBulkAction(ids, action)
     setSelectedIds([])
   }
 
@@ -93,6 +107,47 @@ export default function EmailList({ emails, selectedEmailId, onSelectEmail, onBu
             className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 disabled:opacity-40"
           >
             Archive selected
+          </button>
+          {currentFolder === "DELETED" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("restore")}
+              className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 disabled:opacity-40"
+            >
+              Restore selected
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="sticky top-[41px] z-10 bg-white px-4 py-2 border-b border-gray-200 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => runBulkAction("markRead")}
+            disabled={selectedIds.length === 0}
+            className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 disabled:opacity-40"
+          >
+            Mark selected read
+          </button>
+          <button
+            onClick={() => runBulkAction("markUnread")}
+            disabled={selectedIds.length === 0}
+            className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 disabled:opacity-40"
+          >
+            Mark selected unread
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => runBulkAction("markRead", selectableIds)}
+            className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 disabled:opacity-40"
+          >
+            Mark all read
+          </button>
+          <button
+            onClick={() => runBulkAction("markUnread", selectableIds)}
+            className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 disabled:opacity-40"
+          >
+            Mark all unread
           </button>
         </div>
       </div>

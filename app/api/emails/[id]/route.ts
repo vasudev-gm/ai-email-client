@@ -34,6 +34,9 @@ export async function PATCH(
   if (typeof body.isArchived === "boolean") {
     email.isArchived = body.isArchived
   }
+  if (typeof body.isDeleted === "boolean") {
+    email.isDeleted = body.isDeleted
+  }
 
   return NextResponse.json({ success: true, email })
 }

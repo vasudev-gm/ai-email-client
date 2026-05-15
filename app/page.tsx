@@ -27,6 +27,19 @@ export default function Home() {
   const [emails, setEmails] = useState<EmailData[]>([])
   const [selectedEmail, setSelectedEmail] = useState<EmailData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
+  const [deletedCount, setDeletedCount] = useState(0)
+
+  const refreshFolderCounts = useCallback(async () => {
+    const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
+    const [inboxRes, deletedRes] = await Promise.all([
+      fetch(`/api/emails?folder=INBOX${accountQuery}`),
+      fetch(`/api/emails?folder=DELETED${accountQuery}`),
+    ])
+    const [inboxData, deletedData] = await Promise.all([inboxRes.json(), deletedRes.json()])
+    setInboxUnreadCount((inboxData.emails || []).filter((email: EmailData) => !email.isRead).length)
+    setDeletedCount((deletedData.emails || []).length)
+  }, [selectedAccountId])
 
   useEffect(() => {
     let isCancelled = false
@@ -42,6 +55,7 @@ export default function Home() {
         const data = await response.json()
         if (!isCancelled) {
           setEmails(data.emails || [])
+          void refreshFolderCounts()
         }
       } finally {
         if (!isCancelled) {
@@ -53,7 +67,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [currentFolder, searchQuery, selectedAccountId])
+  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts])
 
   useEffect(() => {
     let isCancelled = false
@@ -70,11 +84,14 @@ export default function Home() {
         const data = await response.json()
         if (!isCancelled) {
           setSelectedEmail(data)
-          await fetch(`/api/emails/${selectedEmailId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ isRead: true }),
-          })
+          if (!data.isRead) {
+            await fetch(`/api/emails/${selectedEmailId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isRead: true }),
+            })
+            void refreshFolderCounts()
+          }
           setEmails((current) =>
             current.map((email) =>
               email.id === selectedEmailId ? { ...email, isRead: true } : email
@@ -91,7 +108,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [selectedEmailId])
+  }, [selectedEmailId, refreshFolderCounts])
 
   const handleSendEmail = async (data: {
     to: string
@@ -108,28 +125,70 @@ export default function Home() {
     setIsComposeOpen(false)
   }
 
-  const handleBulkAction = useCallback(async (ids: string[], action: "archive" | "star") => {
-    const shouldShowEmail = (email: EmailData) =>
-      !(currentFolder === "INBOX" && email.isArchived)
+  const handleBulkAction = useCallback(async (
+    ids: string[],
+    action: "archive" | "star" | "markRead" | "markUnread" | "restore"
+  ) => {
+    const payload =
+      action === "archive"
+        ? { isArchived: true }
+        : action === "star"
+          ? { isStarred: true }
+          : action === "markRead"
+            ? { isRead: true }
+            : action === "markUnread"
+              ? { isRead: false }
+              : { isDeleted: false }
 
     await Promise.all(
       ids.map((id) =>
         fetch(`/api/emails/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(action === "archive" ? { isArchived: true } : { isStarred: true }),
+          body: JSON.stringify(payload),
         })
       )
     )
     setEmails((current) =>
       current.map((email) => {
         if (!ids.includes(email.id)) return email
-        return action === "archive"
-          ? { ...email, isArchived: true }
-          : { ...email, isStarred: true }
-      }).filter(shouldShowEmail)
+        if (action === "archive") return { ...email, isArchived: true }
+        if (action === "star") return { ...email, isStarred: true }
+        if (action === "markRead") return { ...email, isRead: true }
+        if (action === "markUnread") return { ...email, isRead: false }
+        return { ...email, isDeleted: false }
+      }).filter((email) => {
+        if (currentFolder === "INBOX") return !email.isArchived && !email.isDeleted && !email.isSent && !email.isDraft
+        if (currentFolder === "ARCHIVED") return email.isArchived && !email.isDeleted
+        if (currentFolder === "DELETED") return email.isDeleted
+        if (currentFolder === "STARRED") return email.isStarred && !email.isDeleted
+        return !email.isDeleted || currentFolder === "DELETED"
+      })
     )
-  }, [currentFolder])
+    void refreshFolderCounts()
+  }, [currentFolder, refreshFolderCounts])
+
+  const handleDeleteEmail = useCallback(async () => {
+    if (!selectedEmailId) return
+    await fetch(`/api/emails/${selectedEmailId}`, { method: "DELETE" })
+    setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
+    setSelectedEmailId(null)
+    setSelectedEmail(null)
+    void refreshFolderCounts()
+  }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
+
+  const handleRestoreEmail = useCallback(async () => {
+    if (!selectedEmailId) return
+    await fetch(`/api/emails/${selectedEmailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isDeleted: false }),
+    })
+    setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
+    setSelectedEmailId(null)
+    setSelectedEmail(null)
+    void refreshFolderCounts()
+  }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -148,7 +207,7 @@ export default function Home() {
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        <Sidebar />
+        <Sidebar inboxUnreadCount={inboxUnreadCount} deletedCount={deletedCount} />
       </div>
 
       {/* Main content */}
@@ -183,6 +242,7 @@ export default function Home() {
           `}>
             <EmailList
               emails={emails}
+              currentFolder={currentFolder}
               selectedEmailId={selectedEmailId}
               onSelectEmail={setSelectedEmailId}
               onBulkAction={handleBulkAction}
@@ -196,11 +256,13 @@ export default function Home() {
             ${selectedEmailId ? "block" : "hidden md:flex md:items-center md:justify-center"}
           `}>
             {selectedEmail ? (
-              <EmailViewer
-                email={selectedEmail}
-                onBack={() => setSelectedEmailId(null)}
-                onReply={() => setIsComposeOpen(true)}
-              />
+                <EmailViewer
+                  email={selectedEmail}
+                  onBack={() => setSelectedEmailId(null)}
+                  onReply={() => setIsComposeOpen(true)}
+                  onDelete={handleDeleteEmail}
+                  onRestore={handleRestoreEmail}
+                />
             ) : (
               <div className="text-center text-gray-400">
                 <div className="text-6xl mb-4">✉️</div>

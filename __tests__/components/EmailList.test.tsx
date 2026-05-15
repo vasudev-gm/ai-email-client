@@ -7,6 +7,7 @@ describe("EmailList", () => {
     render(
       <EmailList
         emails={MOCK_EMAILS.slice(0, 3)}
+        currentFolder="INBOX"
         selectedEmailId={null}
         onSelectEmail={() => {}}
       />
@@ -18,6 +19,7 @@ describe("EmailList", () => {
     render(
       <EmailList
         emails={[]}
+        currentFolder="INBOX"
         selectedEmailId={null}
         onSelectEmail={() => {}}
       />
@@ -30,6 +32,7 @@ describe("EmailList", () => {
     render(
       <EmailList
         emails={MOCK_EMAILS.slice(0, 2)}
+        currentFolder="INBOX"
         selectedEmailId={null}
         onSelectEmail={() => {}}
         onBulkAction={onBulkAction}
@@ -39,5 +42,21 @@ describe("EmailList", () => {
     fireEvent.click(screen.getByLabelText(/select all/i))
     fireEvent.click(screen.getByRole("button", { name: /archive selected/i }))
     expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "archive")
+  })
+
+  it("supports mark all read", () => {
+    const onBulkAction = jest.fn()
+    render(
+      <EmailList
+        emails={MOCK_EMAILS.slice(0, 2)}
+        currentFolder="INBOX"
+        selectedEmailId={null}
+        onSelectEmail={() => {}}
+        onBulkAction={onBulkAction}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /mark all read/i }))
+    expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "markRead")
   })
 })

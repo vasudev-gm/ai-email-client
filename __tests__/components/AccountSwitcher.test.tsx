@@ -7,6 +7,7 @@ describe("AccountSwitcher", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
     fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    expect(screen.getByRole("dialog", { name: /add account/i })).toBeInTheDocument()
     fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), {
       target: { value: "new@example.com" },
     })
