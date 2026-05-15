@@ -19,7 +19,7 @@ An AI-first universal email client built as a mobile-ready Progressive Web App (
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+| ----- | ---------- |
 | Framework | Next.js 15 (App Router, TypeScript) |
 | Styling | Tailwind CSS |
 | Auth | NextAuth.js v5 (Google, Microsoft, IMAP credentials) |
@@ -51,7 +51,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Environment Variables
 
 | Variable | Required | Description |
-|----------|----------|-------------|
+| ----- | ---------- | ------------- |
 | `DATABASE_URL` | Yes | SQLite: `file:./dev.db` or PostgreSQL URL |
 | `NEXTAUTH_SECRET` | Yes | Random string for session encryption |
 | **AI Provider** (choose one or none) | | |
@@ -65,8 +65,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `MICROSOFT_CLIENT_SECRET` | No | Microsoft OAuth secret |
 
 **AI Provider Priority**: The system automatically selects the first available provider:
+
 1. Anthropic Claude (if `ANTHROPIC_API_KEY` is set)
-2. OpenAI (if `OPENAI_API_KEY` is set)  
+2. OpenAI (if `OPENAI_API_KEY` is set)
 3. Local SLM (keyword-based fallback, always available)
 
 ## Available Scripts

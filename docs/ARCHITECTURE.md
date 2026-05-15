@@ -6,7 +6,7 @@ AI Email Client is a Next.js 16 Progressive Web App (PWA) that provides a unifie
 
 ## Component Hierarchy
 
-```
+``` bash
 app/layout.tsx (RootLayout)
 └── app/providers.tsx (SessionProvider + QueryClientProvider)
     └── app/page.tsx (Home — main shell)
@@ -22,7 +22,7 @@ app/layout.tsx (RootLayout)
 
 ## Data Flow
 
-```
+``` bash
 User Action → Zustand Store (emailStore.ts)
            → React useEffect triggers fetch
            → Next.js API Route (/api/emails/*)
