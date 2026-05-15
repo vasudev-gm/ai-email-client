@@ -160,7 +160,7 @@ export default function EmailList({
               onClick={() => setIsReadMenuOpen((current) => !current)}
               className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
             >
-              Read status
+              Read/Unread ▾
             </button>
             {isReadMenuOpen && (
               <div
