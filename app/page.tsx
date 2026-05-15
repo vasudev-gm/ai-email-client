@@ -11,6 +11,33 @@ import { useEmailStore } from "@/store/emailStore"
 import { EmailData } from "@/lib/email-utils"
 import { PenSquare, Menu } from "lucide-react"
 
+function getAccountQuery(selectedAccountId: string | null) {
+  return selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
+}
+
+async function fetchFolderCounts(selectedAccountId: string | null) {
+  const accountQuery = getAccountQuery(selectedAccountId)
+  const [inboxRes, deletedRes] = await Promise.all([
+    fetch(`/api/emails?folder=INBOX${accountQuery}`),
+    fetch(`/api/emails?folder=DELETED${accountQuery}`),
+  ])
+  const [inboxData, deletedData] = await Promise.all([inboxRes.json(), deletedRes.json()])
+  return {
+    inboxUnreadCount: (inboxData.emails || []).filter((email: EmailData) => !email.isRead).length,
+    deletedCount: (deletedData.emails || []).length,
+  }
+}
+
+async function fetchVisibleEmails(folder: string, searchQuery: string, selectedAccountId: string | null) {
+  const params = new URLSearchParams()
+  params.set("folder", folder)
+  if (searchQuery) params.set("search", searchQuery)
+  if (selectedAccountId) params.set("accountId", selectedAccountId)
+  const response = await fetch(`/api/emails?${params}`)
+  const data = await response.json()
+  return data.emails || []
+}
+
 export default function Home() {
   const {
     selectedEmailId,
@@ -31,38 +58,21 @@ export default function Home() {
   const [deletedCount, setDeletedCount] = useState(0)
 
   const refreshFolderCounts = useCallback(async () => {
-    const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
-    const [inboxRes, deletedRes] = await Promise.all([
-      fetch(`/api/emails?folder=INBOX${accountQuery}`),
-      fetch(`/api/emails?folder=DELETED${accountQuery}`),
-    ])
-    const [inboxData, deletedData] = await Promise.all([inboxRes.json(), deletedRes.json()])
-    setInboxUnreadCount((inboxData.emails || []).filter((email: EmailData) => !email.isRead).length)
-    setDeletedCount((deletedData.emails || []).length)
+    const counts = await fetchFolderCounts(selectedAccountId)
+    setInboxUnreadCount(counts.inboxUnreadCount)
+    setDeletedCount(counts.deletedCount)
   }, [selectedAccountId])
 
   useEffect(() => {
     let isCancelled = false
     const fetchEmails = async () => {
       setLoading(true)
-      const params = new URLSearchParams()
-      params.set("folder", currentFolder)
-      if (searchQuery) params.set("search", searchQuery)
-      if (selectedAccountId) params.set("accountId", selectedAccountId)
 
       try {
-        const response = await fetch(`/api/emails?${params}`)
-        const data = await response.json()
+        const visibleEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
         if (!isCancelled) {
-          setEmails(data.emails || [])
-          const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
-          const [inboxRes, deletedRes] = await Promise.all([
-            fetch(`/api/emails?folder=INBOX${accountQuery}`),
-            fetch(`/api/emails?folder=DELETED${accountQuery}`),
-          ])
-          const [inboxData, deletedData] = await Promise.all([inboxRes.json(), deletedRes.json()])
-          setInboxUnreadCount((inboxData.emails || []).filter((email: EmailData) => !email.isRead).length)
-          setDeletedCount((deletedData.emails || []).length)
+          setEmails(visibleEmails)
+          void refreshFolderCounts()
         }
       } finally {
         if (!isCancelled) {
@@ -74,7 +84,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [currentFolder, searchQuery, selectedAccountId])
+  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts])
 
   useEffect(() => {
     let isCancelled = false
@@ -97,10 +107,7 @@ export default function Home() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ isRead: true }),
             })
-            const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
-            const inboxRes = await fetch(`/api/emails?folder=INBOX${accountQuery}`)
-            const inboxData = await inboxRes.json()
-            setInboxUnreadCount((inboxData.emails || []).filter((email: EmailData) => !email.isRead).length)
+            void refreshFolderCounts()
           }
           setEmails((current) =>
             current.map((email) =>
@@ -118,7 +125,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [selectedEmailId, selectedAccountId])
+  }, [selectedEmailId, refreshFolderCounts])
 
   const handleSendEmail = async (data: {
     to: string
@@ -159,26 +166,10 @@ export default function Home() {
         })
       )
     )
-    setEmails((current) =>
-      current.map((email) => {
-        if (!ids.includes(email.id)) return email
-        if (action === "archive") return { ...email, isArchived: true }
-        if (action === "star") return { ...email, isStarred: true }
-        if (action === "markRead") return { ...email, isRead: true }
-        if (action === "markUnread") return { ...email, isRead: false }
-        return { ...email, isDeleted: false }
-      }).filter((email) => {
-        if (currentFolder === "INBOX") return !email.isArchived && !email.isDeleted && !email.isSent && !email.isDraft
-        if (currentFolder === "ARCHIVED") return email.isArchived && !email.isDeleted
-        if (currentFolder === "DELETED") return email.isDeleted
-        if (currentFolder === "STARRED") return email.isStarred && !email.isDeleted
-        if (currentFolder === "SENT") return email.isSent && !email.isDeleted
-        if (currentFolder === "DRAFTS") return email.isDraft && !email.isDeleted
-        return !email.isDeleted
-      })
-    )
+    const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
+    setEmails(refreshedEmails)
     void refreshFolderCounts()
-  }, [currentFolder, refreshFolderCounts])
+  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts])
 
   const handleDeleteEmail = useCallback(async () => {
     if (!selectedEmailId) return
