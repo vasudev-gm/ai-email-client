@@ -5,6 +5,11 @@ describe("ThemeToggle", () => {
   beforeEach(() => {
     document.documentElement.classList.add("dark")
     window.localStorage.clear()
+    window.requestAnimationFrame = jest.fn((callback: FrameRequestCallback) => {
+      callback(0)
+      return 0
+    })
+    window.cancelAnimationFrame = jest.fn()
   })
 
   it("toggles theme and stores preference", () => {

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Providers } from "./providers"
+import { THEME_INIT_SCRIPT } from "@/lib/theme"
 
 export const metadata: Metadata = {
   title: "AI Email Client",
@@ -30,13 +31,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (() => {
-                const savedTheme = localStorage.getItem("theme");
-                const preferredTheme = savedTheme || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-                document.documentElement.classList.toggle("dark", preferredTheme === "dark");
-              })();
-            `,
+            __html: THEME_INIT_SCRIPT,
           }}
         />
         <link rel="manifest" href="/manifest.json" />

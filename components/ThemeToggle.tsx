@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Moon, Sun } from "lucide-react"
+import { THEME_STORAGE_KEY } from "@/lib/theme"
 
 function getCurrentTheme() {
   if (typeof document === "undefined") return "light"
@@ -9,13 +10,20 @@ function getCurrentTheme() {
 }
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">(getCurrentTheme())
+  const [theme, setTheme] = useState<"light" | "dark">("light")
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setTheme(getCurrentTheme())
+    })
+    return () => window.cancelAnimationFrame(frameId)
+  }, [])
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark"
     setTheme(nextTheme)
     document.documentElement.classList.toggle("dark", nextTheme === "dark")
-    window.localStorage.setItem("theme", nextTheme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
   }
 
   return (

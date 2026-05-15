@@ -57,7 +57,7 @@ describe("EmailList", () => {
     )
 
     fireEvent.click(screen.getByText(/read status/i))
-    fireEvent.click(screen.getByRole("button", { name: /mark all read/i }))
+    fireEvent.click(screen.getByRole("menuitem", { name: /mark all read/i }))
     expect(onBulkAction).toHaveBeenCalledWith(["1"], "markRead")
   })
 })

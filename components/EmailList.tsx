@@ -74,6 +74,11 @@ export default function EmailList({
     if (!actionableIds.length) return
     onBulkAction(actionableIds, action)
     setSelectedIds([])
+    if (typeof document !== "undefined") {
+      document.querySelectorAll("details[data-read-status-menu]").forEach((menu) => {
+        menu.removeAttribute("open")
+      })
+    }
   }
 
   if (loading) {
@@ -137,12 +142,22 @@ export default function EmailList({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <details className="relative">
-            <summary className="list-none cursor-pointer text-xs px-2 py-1 rounded bg-blue-50 text-blue-700">
+          <details className="relative" data-read-status-menu>
+            <summary
+              role="button"
+              aria-haspopup="menu"
+              aria-label="Read status actions"
+              className="list-none cursor-pointer text-xs px-2 py-1 rounded bg-blue-50 text-blue-700"
+            >
               Read status
             </summary>
-            <div className="absolute right-0 mt-1 w-40 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg p-1 z-20">
+            <div
+              role="menu"
+              aria-label="Read status actions"
+              className="absolute right-0 mt-1 w-40 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg p-1 z-20"
+            >
               <button
+                role="menuitem"
                 onClick={() => runBulkAction("markRead")}
                 disabled={selectedIds.length === 0}
                 className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
@@ -150,6 +165,7 @@ export default function EmailList({
                 Mark selected read
               </button>
               <button
+                role="menuitem"
                 onClick={() => runBulkAction("markUnread")}
                 disabled={selectedIds.length === 0}
                 className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
@@ -157,6 +173,7 @@ export default function EmailList({
                 Mark selected unread
               </button>
               <button
+                role="menuitem"
                 onClick={() => runBulkAction("markRead", selectableIds)}
                 disabled={!hasUnreadEmails}
                 className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
@@ -164,6 +181,7 @@ export default function EmailList({
                 Mark all read
               </button>
               <button
+                role="menuitem"
                 onClick={() => runBulkAction("markUnread", selectableIds)}
                 disabled={!hasReadEmails}
                 className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
