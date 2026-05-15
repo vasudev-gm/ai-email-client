@@ -140,7 +140,6 @@ export default function AccountSwitcher() {
             <label htmlFor="new-account-email" className="text-xs text-gray-600 block">Email</label>
             <input
               id="new-account-email"
-              autoFocus
               value={newEmail}
               onChange={(event) => setNewEmail(event.target.value)}
               placeholder="name@example.com"

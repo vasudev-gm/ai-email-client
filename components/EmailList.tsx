@@ -42,6 +42,10 @@ export default function EmailList({
 }: EmailListProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const selectableIds = useMemo(() => emails.map((email) => email.id), [emails])
+  const emailReadState = useMemo(
+    () => new Map(emails.map((email) => [email.id, email.isRead])),
+    [emails]
+  )
   const allSelected = selectableIds.length > 0 && selectedIds.length === selectableIds.length
 
   const toggleSelection = (id: string) => {
@@ -61,9 +65,9 @@ export default function EmailList({
     if (!ids.length || !onBulkAction) return
     let actionableIds = ids
     if (action === "markRead") {
-      actionableIds = ids.filter((id) => emails.find((email) => email.id === id && !email.isRead))
+      actionableIds = ids.filter((id) => emailReadState.get(id) === false)
     } else if (action === "markUnread") {
-      actionableIds = ids.filter((id) => emails.find((email) => email.id === id && email.isRead))
+      actionableIds = ids.filter((id) => emailReadState.get(id) === true)
     }
     if (!actionableIds.length) return
     onBulkAction(actionableIds, action)

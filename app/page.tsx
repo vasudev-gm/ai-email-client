@@ -170,7 +170,10 @@ export default function Home() {
         })
       )
     )
-    if (responses.some((response) => !response.ok)) return
+    if (responses.some((response) => !response.ok)) {
+      console.error("Bulk email update failed for one or more messages")
+      return
+    }
 
     const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
     setEmails(refreshedEmails)
@@ -180,7 +183,10 @@ export default function Home() {
   const handleDeleteEmail = useCallback(async () => {
     if (!selectedEmailId) return
     const response = await fetch(`/api/emails/${selectedEmailId}`, { method: "DELETE" })
-    if (!response.ok) return
+    if (!response.ok) {
+      console.error("Failed to delete email")
+      return
+    }
     setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
     setSelectedEmailId(null)
     setSelectedEmail(null)
@@ -194,7 +200,10 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isDeleted: false }),
     })
-    if (!response.ok) return
+    if (!response.ok) {
+      console.error("Failed to restore email")
+      return
+    }
     setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
     setSelectedEmailId(null)
     setSelectedEmail(null)
