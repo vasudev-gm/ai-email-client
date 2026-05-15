@@ -2,7 +2,7 @@
 
 import { useEmailStore } from "@/store/emailStore"
 import { 
-  Inbox, Star, Send, FileText, Archive, Trash2, Settings
+  Inbox, Star, Send, FileText, Archive, Trash2, Settings, X
 } from "lucide-react"
 
 interface SidebarProps {
@@ -30,9 +30,19 @@ export default function Sidebar({ inboxUnreadCount, deletedCount }: SidebarProps
   return (
     <div className="h-full bg-gray-900 text-white flex flex-col">
       <div className="p-4 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">✉️</span>
-          <span className="font-semibold text-lg">AI Mail</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✉️</span>
+            <span className="font-semibold text-lg">AI Mail</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-md text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
