@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { EmailData, extractDisplayName, extractEmailAddress } from "@/lib/email-utils"
-import { useEmailStore } from "@/store/emailStore"
 import AISummary from "./AISummary"
 import ReplyDraft from "./ReplyDraft"
 import { ArrowLeft, Star, Archive, Trash2, Reply, Forward, RotateCcw } from "lucide-react"
@@ -18,7 +17,7 @@ interface EmailViewerProps {
 export default function EmailViewer({ email, onBack, onReply, onDelete, onRestore }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
-  const { localAIMode } = useEmailStore()
+  const localAIMode = "heuristic" as const
 
   const date = new Date(email.date)
 

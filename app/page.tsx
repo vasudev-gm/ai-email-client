@@ -162,7 +162,9 @@ export default function Home() {
         if (currentFolder === "ARCHIVED") return email.isArchived && !email.isDeleted
         if (currentFolder === "DELETED") return email.isDeleted
         if (currentFolder === "STARRED") return email.isStarred && !email.isDeleted
-        return !email.isDeleted || currentFolder === "DELETED"
+        if (currentFolder === "SENT") return email.isSent && !email.isDeleted
+        if (currentFolder === "DRAFTS") return email.isDraft && !email.isDeleted
+        return !email.isDeleted
       })
     )
     void refreshFolderCounts()

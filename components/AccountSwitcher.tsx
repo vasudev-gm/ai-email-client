@@ -7,6 +7,7 @@ import { useEmailStore } from "@/store/emailStore"
 const mockAccounts = [
   { id: "acc1", email: "me@example.com", provider: "Google", color: "#EA4335" },
 ]
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function AccountSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
@@ -30,7 +31,6 @@ export default function AccountSwitcher() {
       setError("Email is required.")
       return
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError("Enter a valid email address.")
       return

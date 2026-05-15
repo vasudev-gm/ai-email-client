@@ -12,13 +12,13 @@ interface SidebarProps {
 
 export default function Sidebar({ inboxUnreadCount, deletedCount }: SidebarProps) {
   const folders = [
-  { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount },
-  { id: "STARRED", label: "Starred", icon: Star },
-  { id: "SENT", label: "Sent", icon: Send },
-  { id: "DRAFTS", label: "Drafts", icon: FileText },
-  { id: "ARCHIVED", label: "Archived", icon: Archive },
-  { id: "DELETED", label: "Deleted", icon: Trash2, count: deletedCount || undefined },
-]
+    { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount },
+    { id: "STARRED", label: "Starred", icon: Star },
+    { id: "SENT", label: "Sent", icon: Send },
+    { id: "DRAFTS", label: "Drafts", icon: FileText },
+    { id: "ARCHIVED", label: "Archived", icon: Archive },
+    { id: "DELETED", label: "Deleted", icon: Trash2, count: deletedCount > 0 ? deletedCount : undefined },
+  ]
 
   const { currentFolder, setCurrentFolder, setIsSidebarOpen } = useEmailStore()
 
