@@ -70,6 +70,11 @@ export default function Home() {
         const data = await response.json()
         if (!isCancelled) {
           setSelectedEmail(data)
+          await fetch(`/api/emails/${selectedEmailId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isRead: true }),
+          })
           setEmails((current) =>
             current.map((email) =>
               email.id === selectedEmailId ? { ...email, isRead: true } : email

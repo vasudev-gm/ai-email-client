@@ -61,10 +61,7 @@ export default function AISummary({ emailId, localAIMode, onClose }: AISummaryPr
   }, [emailId, localAIMode])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void fetchSummary()
-    }, 0)
-    return () => clearTimeout(timer)
+    void Promise.resolve().then(() => fetchSummary())
   }, [fetchSummary])
 
   return (

@@ -63,10 +63,7 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
   }, [emailId, localAIMode])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void fetchDraft()
-    }, 0)
-    return () => clearTimeout(timer)
+    void Promise.resolve().then(() => fetchDraft())
   }, [fetchDraft])
 
   const handleCopy = () => {

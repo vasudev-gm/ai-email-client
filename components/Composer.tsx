@@ -27,11 +27,27 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
   const [content, setContent] = useState("")
   const [showCc, setShowCc] = useState(false)
   const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
 
+  const isValidEmailList = (input: string) => {
+    if (!input.trim()) return true
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return input
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .every((value) => emailRegex.test(value))
+  }
+
   const handleSend = async () => {
+    setError(null)
     if (!to.trim() || !subject.trim() || !content.trim()) return
+    if (!isValidEmailList(to) || !isValidEmailList(cc) || !isValidEmailList(bcc)) {
+      setError("Please enter valid email addresses separated by commas.")
+      return
+    }
     setSending(true)
     await onSend({
       to: to.trim(),
@@ -122,6 +138,7 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
               onChange={e => setContent(e.target.value)}
               className="w-full text-sm outline-none placeholder-gray-400 min-h-48 pt-3 resize-none"
             />
+            {error && <p className="text-xs text-red-600 pt-2">{error}</p>}
           </div>
         </div>
 

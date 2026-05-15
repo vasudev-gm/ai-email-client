@@ -11,7 +11,6 @@ export async function GET(
   if (!email) {
     return NextResponse.json({ error: "Email not found" }, { status: 404 })
   }
-  email.isRead = true
   return NextResponse.json(email)
 }
 
