@@ -59,7 +59,14 @@ export default function EmailList({
     ids = selectedIds
   ) => {
     if (!ids.length || !onBulkAction) return
-    onBulkAction(ids, action)
+    let actionableIds = ids
+    if (action === "markRead") {
+      actionableIds = ids.filter((id) => emails.find((email) => email.id === id && !email.isRead))
+    } else if (action === "markUnread") {
+      actionableIds = ids.filter((id) => emails.find((email) => email.id === id && email.isRead))
+    }
+    if (!actionableIds.length) return
+    onBulkAction(actionableIds, action)
     setSelectedIds([])
   }
 

@@ -7,7 +7,7 @@ import { useEmailStore } from "@/store/emailStore"
 const mockAccounts = [
   { id: "acc1", email: "me@example.com", provider: "Google", color: "#EA4335" },
 ]
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function AccountSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
@@ -31,7 +31,7 @@ export default function AccountSwitcher() {
       setError("Email is required.")
       return
     }
-    if (!emailRegex.test(email)) {
+    if (!EMAIL_REGEX.test(email)) {
       setError("Enter a valid email address.")
       return
     }
@@ -124,17 +124,16 @@ export default function AccountSwitcher() {
       )}
 
       {isAdding && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") closeAddDialog()
-          }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeAddDialog} />
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-account-title"
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") closeAddDialog()
+            }}
             className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-4 space-y-3"
           >
             <h3 id="add-account-title" className="text-sm font-semibold text-gray-900">Add account</h3>

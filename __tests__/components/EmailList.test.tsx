@@ -57,6 +57,6 @@ describe("EmailList", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: /mark all read/i }))
-    expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "markRead")
+    expect(onBulkAction).toHaveBeenCalledWith(["1"], "markRead")
   })
 })

@@ -98,22 +98,29 @@ export default function Home() {
 
       try {
         const response = await fetch(`/api/emails/${selectedEmailId}`)
+        if (!response.ok) throw new Error("Email fetch failed")
         const data = await response.json()
         if (!isCancelled) {
           setSelectedEmail(data)
+          let shouldSetReadLocally = data.isRead
           if (!data.isRead) {
-            await fetch(`/api/emails/${selectedEmailId}`, {
+            const markReadResponse = await fetch(`/api/emails/${selectedEmailId}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ isRead: true }),
             })
-            void refreshFolderCounts()
+            if (markReadResponse.ok) {
+              shouldSetReadLocally = true
+              void refreshFolderCounts()
+            }
           }
-          setEmails((current) =>
-            current.map((email) =>
-              email.id === selectedEmailId ? { ...email, isRead: true } : email
+          if (shouldSetReadLocally) {
+            setEmails((current) =>
+              current.map((email) =>
+                email.id === selectedEmailId ? { ...email, isRead: true } : email
+              )
             )
-          )
+          }
         }
       } catch {
         if (!isCancelled) {
@@ -146,26 +153,25 @@ export default function Home() {
     ids: string[],
     action: "archive" | "star" | "markRead" | "markUnread" | "restore"
   ) => {
-    const payload =
-      action === "archive"
-        ? { isArchived: true }
-        : action === "star"
-          ? { isStarred: true }
-          : action === "markRead"
-            ? { isRead: true }
-            : action === "markUnread"
-              ? { isRead: false }
-              : { isDeleted: false }
+    const actionPayloadMap: Record<typeof action, Record<string, boolean>> = {
+      archive: { isArchived: true },
+      star: { isStarred: true },
+      markRead: { isRead: true },
+      markUnread: { isRead: false },
+      restore: { isDeleted: false },
+    }
 
-    await Promise.all(
+    const responses = await Promise.all(
       ids.map((id) =>
         fetch(`/api/emails/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(actionPayloadMap[action]),
         })
       )
     )
+    if (responses.some((response) => !response.ok)) return
+
     const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
     setEmails(refreshedEmails)
     void refreshFolderCounts()
@@ -173,7 +179,8 @@ export default function Home() {
 
   const handleDeleteEmail = useCallback(async () => {
     if (!selectedEmailId) return
-    await fetch(`/api/emails/${selectedEmailId}`, { method: "DELETE" })
+    const response = await fetch(`/api/emails/${selectedEmailId}`, { method: "DELETE" })
+    if (!response.ok) return
     setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
     setSelectedEmailId(null)
     setSelectedEmail(null)
@@ -182,11 +189,12 @@ export default function Home() {
 
   const handleRestoreEmail = useCallback(async () => {
     if (!selectedEmailId) return
-    await fetch(`/api/emails/${selectedEmailId}`, {
+    const response = await fetch(`/api/emails/${selectedEmailId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isDeleted: false }),
     })
+    if (!response.ok) return
     setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
     setSelectedEmailId(null)
     setSelectedEmail(null)
