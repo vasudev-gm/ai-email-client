@@ -13,10 +13,12 @@ import ThemeToggle from "@/components/ThemeToggle"
 import { useEmailStore } from "@/store/emailStore"
 import { EmailData } from "@/lib/email-utils"
 import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
+import { toApiAccountId } from "@/lib/account-filter"
 import { PenSquare, Menu, LogOut } from "lucide-react"
 
 function getAccountQuery(selectedAccountId: string | null) {
-  return selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
+  const apiAccountId = toApiAccountId(selectedAccountId)
+  return apiAccountId ? `&accountId=${encodeURIComponent(apiAccountId)}` : ""
 }
 
 async function fetchFolderCounts(selectedAccountId: string | null) {
@@ -36,7 +38,8 @@ async function fetchVisibleEmails(folder: string, searchQuery: string, selectedA
   const params = new URLSearchParams()
   params.set("folder", folder)
   if (searchQuery) params.set("search", searchQuery)
-  if (selectedAccountId) params.set("accountId", selectedAccountId)
+  const apiAccountId = toApiAccountId(selectedAccountId)
+  if (apiAccountId) params.set("accountId", apiAccountId)
   const response = await fetch(`/api/emails?${params}`)
   const data = await response.json()
   return data.emails || []
