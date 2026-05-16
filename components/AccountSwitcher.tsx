@@ -44,7 +44,7 @@ export default function AccountSwitcher() {
         Boolean(
           account?.id &&
           EMAIL_REGEX.test(account.email) &&
-          Object.prototype.hasOwnProperty.call(PROVIDER_COLOR_MAP, account.provider) &&
+          account.provider in PROVIDER_COLOR_MAP &&
           COLOR_REGEX.test(account.color)
         )
       )
@@ -123,6 +123,10 @@ export default function AccountSwitcher() {
       setError("IMAP host is required.")
       return
     }
+    if (!imapPassword.trim()) {
+      setError("Password is required.")
+      return
+    }
 
     const connectResult = await signIn("credentials", {
       email,
@@ -132,7 +136,8 @@ export default function AccountSwitcher() {
       redirect: false,
     })
     if (!connectResult?.ok) {
-      setError("Couldn't connect account. Please verify IMAP details.")
+      const reason = connectResult?.error ? ` (${connectResult.error})` : ""
+      setError(`Couldn't connect account. Check credentials and IMAP host/port${reason}.`)
       return
     }
 

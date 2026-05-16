@@ -275,7 +275,12 @@ export default function Home() {
             <button
               onClick={async () => {
                 localStorage.removeItem(ACCOUNT_STORAGE_KEY)
-                await signOut({ callbackUrl: "/login" })
+                try {
+                  await signOut({ callbackUrl: "/login" })
+                } catch (error) {
+                  console.error("Sign out failed:", error)
+                  router.replace("/login")
+                }
               }}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
               aria-label="Sign out"

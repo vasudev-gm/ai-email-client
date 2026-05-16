@@ -38,6 +38,9 @@ describe("AccountSwitcher", () => {
     fireEvent.change(screen.getByLabelText(/imap host/i), {
       target: { value: "imap.example.com" },
     })
+    fireEvent.change(screen.getByLabelText(/password \/ app password/i), {
+      target: { value: "secret123" },
+    })
     fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
 
     expect(await screen.findByText("new@example.com")).toBeInTheDocument()

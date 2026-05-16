@@ -2,11 +2,17 @@ import { NextResponse } from "next/server"
 import { generateReplyDraftWithOptions } from "@/lib/ai"
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null)
-  const subject = typeof body?.subject === "string" ? body.subject.trim() : ""
-  const content = typeof body?.content === "string" ? body.content.trim() : ""
-  const to = typeof body?.to === "string" ? body.to.trim() : ""
-  const localAIMode = body?.localAIMode === "true-slm" ? "true-slm" : "heuristic"
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Malformed JSON request body" }, { status: 400 })
+  }
+  const payload = (body && typeof body === "object" ? body : {}) as Record<string, unknown>
+  const subject = typeof payload.subject === "string" ? payload.subject.trim() : ""
+  const content = typeof payload.content === "string" ? payload.content.trim() : ""
+  const to = typeof payload.to === "string" ? payload.to.trim() : ""
+  const localAIMode = payload.localAIMode === "true-slm" ? "true-slm" : "heuristic"
 
   if (!subject && !content) {
     return NextResponse.json({ error: "Subject or content is required" }, { status: 400 })
