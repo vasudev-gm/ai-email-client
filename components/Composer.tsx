@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { X, Wand2, Send } from "lucide-react"
+import { useEmailStore } from "@/store/emailStore"
 
 interface ComposerProps {
   isOpen: boolean
@@ -27,7 +28,9 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
   const [content, setContent] = useState("")
   const [showCc, setShowCc] = useState(false)
   const [sending, setSending] = useState(false)
+  const [assisting, setAssisting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { localAIMode } = useEmailStore()
 
   if (!isOpen) return null
 
@@ -62,6 +65,37 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
     setBcc("")
     setSubject("")
     setContent("")
+  }
+
+  const handleAIAssist = async () => {
+    setError(null)
+    if (!subject.trim() && !content.trim()) {
+      setError("Add a subject or message first for AI Assist.")
+      return
+    }
+
+    setAssisting(true)
+    try {
+      const response = await fetch("/api/compose/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to,
+          subject,
+          content,
+          localAIMode,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok || !data?.draft) {
+        throw new Error("AI draft generation failed")
+      }
+      setContent(data.draft)
+    } catch {
+      setError("AI Assist couldn't generate a draft. Please try again.")
+    } finally {
+      setAssisting(false)
+    }
   }
 
   return (
@@ -144,9 +178,13 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-lg transition-colors">
+          <button
+            onClick={handleAIAssist}
+            disabled={assisting}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-lg transition-colors disabled:opacity-50"
+          >
             <Wand2 className="w-4 h-4" />
-            AI Assist
+            {assisting ? "Assisting..." : "AI Assist"}
           </button>
           <div className="flex items-center gap-2">
             <button

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { signOut, useSession } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
 import EmailList from "@/components/EmailList"
 import EmailViewer from "@/components/EmailViewer"
@@ -10,7 +12,7 @@ import AccountSwitcher from "@/components/AccountSwitcher"
 import ThemeToggle from "@/components/ThemeToggle"
 import { useEmailStore } from "@/store/emailStore"
 import { EmailData } from "@/lib/email-utils"
-import { PenSquare, Menu } from "lucide-react"
+import { PenSquare, Menu, LogOut } from "lucide-react"
 
 function getAccountQuery(selectedAccountId: string | null) {
   return selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ""
@@ -40,6 +42,8 @@ async function fetchVisibleEmails(folder: string, searchQuery: string, selectedA
 }
 
 export default function Home() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
   const {
     selectedEmailId,
     currentFolder,
@@ -57,16 +61,25 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
   const [deletedCount, setDeletedCount] = useState(0)
+  const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login")
+    }
+  }, [status, router])
 
   const refreshFolderCounts = useCallback(async () => {
+    if (!isAuthenticated) return
     const counts = await fetchFolderCounts(selectedAccountId)
     setInboxUnreadCount(counts.inboxUnreadCount)
     setDeletedCount(counts.deletedCount)
-  }, [selectedAccountId])
+  }, [selectedAccountId, isAuthenticated])
 
   useEffect(() => {
     let isCancelled = false
     const fetchEmails = async () => {
+      if (!isAuthenticated) return
       setLoading(true)
 
       try {
@@ -85,11 +98,12 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts])
+  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, isAuthenticated])
 
   useEffect(() => {
     let isCancelled = false
     const fetchEmail = async () => {
+      if (!isAuthenticated) return
       if (!selectedEmailId) {
         if (!isCancelled) {
           setSelectedEmail(null)
@@ -133,7 +147,7 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [selectedEmailId, refreshFolderCounts])
+  }, [selectedEmailId, refreshFolderCounts, isAuthenticated])
 
   const handleSendEmail = async (data: {
     to: string
@@ -214,6 +228,14 @@ export default function Home() {
     void refreshFolderCounts()
   }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-950 text-gray-500 dark:text-gray-300">
+        Loading...
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden">
       {/* Mobile sidebar overlay */}
@@ -247,11 +269,21 @@ export default function Home() {
            <div className="flex-1">
              <SearchBar />
            </div>
-           <ThemeToggle />
-           <AccountSwitcher />
-          <button
-            onClick={() => setIsComposeOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            <ThemeToggle />
+            <AccountSwitcher />
+            <button
+              onClick={async () => {
+                localStorage.removeItem("ai-mail-accounts")
+                await signOut({ callbackUrl: "/login" })
+              }}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+           <button
+             onClick={() => setIsComposeOpen(true)}
+             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
             <PenSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Compose</span>

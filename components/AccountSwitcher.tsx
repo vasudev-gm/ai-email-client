@@ -1,23 +1,79 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronDown, Plus, Check } from "lucide-react"
 import { useEmailStore } from "@/store/emailStore"
+import { signIn, useSession } from "next-auth/react"
 
-const mockAccounts = [
+type AccountOption = {
+  id: string
+  email: string
+  provider: string
+  color: string
+}
+
+const ACCOUNT_STORAGE_KEY = "ai-mail-accounts"
+const mockAccounts: AccountOption[] = [
   { id: "acc1", email: "me@example.com", provider: "Google", color: "#EA4335" },
 ]
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PROVIDER_COLOR_MAP: Record<string, string> = {
+  Google: "#EA4335",
+  Microsoft: "#0A66C2",
+  Yahoo: "#7E22CE",
+  AOL: "#2563EB",
+  IMAP: "#6B7280",
+}
+const IMAP_PROVIDER_DEFAULTS: Record<string, { host: string; port: string }> = {
+  Yahoo: { host: "imap.mail.yahoo.com", port: "993" },
+  AOL: { host: "imap.aol.com", port: "993" },
+  IMAP: { host: "", port: "993" },
+}
 
 export default function AccountSwitcher() {
+  const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
-  const [accounts, setAccounts] = useState(mockAccounts)
+  const [persistedAccounts, setPersistedAccounts] = useState<AccountOption[]>(() => {
+    if (typeof window === "undefined") return []
+    const storedRaw = window.localStorage.getItem(ACCOUNT_STORAGE_KEY)
+    if (!storedRaw) return []
+    try {
+      const parsed = JSON.parse(storedRaw) as AccountOption[]
+      return parsed.filter((account) => account?.id && account?.email && account?.provider && account?.color)
+    } catch {
+      return []
+    }
+  })
   const [isAdding, setIsAdding] = useState(false)
   const [newEmail, setNewEmail] = useState("")
-  const [newProvider, setNewProvider] = useState("IMAP")
+  const [newProvider, setNewProvider] = useState("Google")
+  const [imapHost, setImapHost] = useState("")
+  const [imapPort, setImapPort] = useState("993")
+  const [imapPassword, setImapPassword] = useState("")
   const [error, setError] = useState("")
   const { selectedAccountId, setSelectedAccountId } = useEmailStore()
+  const sessionEmail = session?.user?.email
+  const sessionAccount = useMemo(
+    () =>
+      sessionEmail
+        ? {
+            id: `session-${sessionEmail}`,
+            email: sessionEmail,
+            provider: "Google",
+            color: PROVIDER_COLOR_MAP.Google,
+          }
+        : null,
+    [sessionEmail]
+  )
+  const accounts = useMemo(
+    () => (sessionAccount ? [sessionAccount, ...persistedAccounts] : mockAccounts),
+    [sessionAccount, persistedAccounts]
+  )
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || accounts[0]
+
+  useEffect(() => {
+    window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(persistedAccounts))
+  }, [persistedAccounts])
 
   useEffect(() => {
     if (!selectedAccountId && accounts[0]) {
@@ -25,7 +81,27 @@ export default function AccountSwitcher() {
     }
   }, [accounts, selectedAccountId, setSelectedAccountId])
 
-  const handleAddAccount = () => {
+  const handleProviderChange = (provider: string) => {
+    setNewProvider(provider)
+    setError("")
+    if (provider in IMAP_PROVIDER_DEFAULTS) {
+      const defaults = IMAP_PROVIDER_DEFAULTS[provider]
+      setImapHost(defaults.host)
+      setImapPort(defaults.port)
+    }
+  }
+
+  const handleAddAccount = async () => {
+    setError("")
+    if (newProvider === "Google") {
+      await signIn("google", { callbackUrl: "/" })
+      return
+    }
+    if (newProvider === "Microsoft") {
+      await signIn("microsoft-entra-id", { callbackUrl: "/" })
+      return
+    }
+
     const email = newEmail.trim()
     if (!email) {
       setError("Email is required.")
@@ -35,14 +111,38 @@ export default function AccountSwitcher() {
       setError("Enter a valid email address.")
       return
     }
+    if (!imapHost.trim()) {
+      setError("IMAP host is required.")
+      return
+    }
+
+    const connectResult = await signIn("credentials", {
+      email,
+      password: imapPassword,
+      imapHost: imapHost.trim(),
+      imapPort: imapPort.trim() || "993",
+      redirect: false,
+    })
+    if (!connectResult?.ok) {
+      setError("Couldn't connect account. Please verify IMAP details.")
+      return
+    }
+
     const id = `acc${Date.now()}`
-    const provider = newProvider.trim() || "IMAP"
-    const colors = ["#EA4335", "#0A66C2", "#6B7280", "#8B5CF6", "#059669"]
-    const account = { id, email, provider, color: colors[accounts.length % colors.length] }
-    setAccounts((current) => [...current, account])
+    const providerLabel = newProvider === "IMAP" ? "IMAP" : newProvider
+    const account = {
+      id,
+      email,
+      provider: providerLabel,
+      color: PROVIDER_COLOR_MAP[providerLabel] || PROVIDER_COLOR_MAP.IMAP,
+    }
+    setPersistedAccounts((current) => [...current, account])
     setSelectedAccountId(id)
     setNewEmail("")
-    setNewProvider("IMAP")
+    setNewProvider("Google")
+    setImapHost("")
+    setImapPort("993")
+    setImapPassword("")
     setError("")
     setIsAdding(false)
     setIsOpen(false)
@@ -50,8 +150,11 @@ export default function AccountSwitcher() {
 
   const closeAddDialog = () => {
     setError("")
+    setNewProvider("Google")
     setIsAdding(false)
   }
+
+  const requiresImapFields = newProvider === "IMAP" || newProvider === "Yahoo" || newProvider === "AOL"
 
   return (
     <div className="relative">
@@ -149,13 +252,44 @@ export default function AccountSwitcher() {
             <select
               id="new-account-provider"
               value={newProvider}
-              onChange={(event) => setNewProvider(event.target.value)}
+              onChange={(event) => handleProviderChange(event.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             >
               <option value="Google">Google</option>
               <option value="Microsoft">Microsoft</option>
-              <option value="IMAP">IMAP</option>
+              <option value="Yahoo">Yahoo (IMAP)</option>
+              <option value="AOL">AOL (IMAP)</option>
+              <option value="IMAP">Other IMAP</option>
             </select>
+            {requiresImapFields && (
+              <>
+                <label htmlFor="new-account-imap-host" className="text-xs text-gray-600 dark:text-gray-300 block">IMAP Host</label>
+                <input
+                  id="new-account-imap-host"
+                  value={imapHost}
+                  onChange={(event) => setImapHost(event.target.value)}
+                  placeholder="imap.example.com"
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                />
+                <label htmlFor="new-account-imap-port" className="text-xs text-gray-600 dark:text-gray-300 block">IMAP Port</label>
+                <input
+                  id="new-account-imap-port"
+                  value={imapPort}
+                  onChange={(event) => setImapPort(event.target.value)}
+                  placeholder="993"
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                />
+                <label htmlFor="new-account-imap-password" className="text-xs text-gray-600 dark:text-gray-300 block">Password / App Password</label>
+                <input
+                  id="new-account-imap-password"
+                  type="password"
+                  value={imapPassword}
+                  onChange={(event) => setImapPassword(event.target.value)}
+                  placeholder="••••••••"
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                />
+              </>
+            )}
             {error && (
               <p className="text-xs text-red-600" role="status" aria-live="polite">{error}</p>
             )}
