@@ -144,7 +144,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Use &quot;Continue in Demo Mode&quot; for instant access without external account setup.
+          Use the Continue in Demo Mode option for instant access without external account setup.
         </p>
       </div>
     </div>
