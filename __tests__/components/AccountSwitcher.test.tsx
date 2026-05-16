@@ -14,8 +14,12 @@ jest.mock("next-auth/react", () => ({
 describe("AccountSwitcher", () => {
   beforeEach(() => {
     mockSignIn.mockReset()
-    Storage.prototype.getItem = jest.fn(() => null)
-    Storage.prototype.setItem = jest.fn()
+    jest.spyOn(Storage.prototype, "getItem").mockReturnValue(null)
+    jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   it("can add a new account", async () => {
@@ -44,6 +48,9 @@ describe("AccountSwitcher", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
     fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    fireEvent.change(screen.getByLabelText(/provider/i), {
+      target: { value: "Google" },
+    })
     fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
 
     expect(mockSignIn).toHaveBeenCalledWith("google", { callbackUrl: "/" })

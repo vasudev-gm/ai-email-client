@@ -6,6 +6,13 @@ jest.mock("@/store/emailStore", () => ({
 }))
 
 describe("Composer", () => {
+  const originalFetch = global.fetch
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+    global.fetch = originalFetch
+  })
+
   it("renders compose form", () => {
     render(
       <Composer

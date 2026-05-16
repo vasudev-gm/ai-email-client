@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ChevronDown, Plus, Check } from "lucide-react"
 import { useEmailStore } from "@/store/emailStore"
 import { signIn, useSession } from "next-auth/react"
+import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
 
 type AccountOption = {
   id: string
@@ -12,11 +13,11 @@ type AccountOption = {
   color: string
 }
 
-const ACCOUNT_STORAGE_KEY = "ai-mail-accounts"
 const mockAccounts: AccountOption[] = [
   { id: "acc1", email: "me@example.com", provider: "Google", color: "#EA4335" },
 ]
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/
 const PROVIDER_COLOR_MAP: Record<string, string> = {
   Google: "#EA4335",
   Microsoft: "#0A66C2",
@@ -39,14 +40,21 @@ export default function AccountSwitcher() {
     if (!storedRaw) return []
     try {
       const parsed = JSON.parse(storedRaw) as AccountOption[]
-      return parsed.filter((account) => account?.id && account?.email && account?.provider && account?.color)
+      return parsed.filter((account) =>
+        Boolean(
+          account?.id &&
+          EMAIL_REGEX.test(account.email) &&
+          Object.prototype.hasOwnProperty.call(PROVIDER_COLOR_MAP, account.provider) &&
+          COLOR_REGEX.test(account.color)
+        )
+      )
     } catch {
       return []
     }
   })
   const [isAdding, setIsAdding] = useState(false)
   const [newEmail, setNewEmail] = useState("")
-  const [newProvider, setNewProvider] = useState("Google")
+  const [newProvider, setNewProvider] = useState("IMAP")
   const [imapHost, setImapHost] = useState("")
   const [imapPort, setImapPort] = useState("993")
   const [imapPassword, setImapPassword] = useState("")
@@ -139,7 +147,7 @@ export default function AccountSwitcher() {
     setPersistedAccounts((current) => [...current, account])
     setSelectedAccountId(id)
     setNewEmail("")
-    setNewProvider("Google")
+    setNewProvider("IMAP")
     setImapHost("")
     setImapPort("993")
     setImapPassword("")
@@ -150,7 +158,7 @@ export default function AccountSwitcher() {
 
   const closeAddDialog = () => {
     setError("")
-    setNewProvider("Google")
+    setNewProvider("IMAP")
     setIsAdding(false)
   }
 

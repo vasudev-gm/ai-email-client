@@ -12,6 +12,7 @@ import AccountSwitcher from "@/components/AccountSwitcher"
 import ThemeToggle from "@/components/ThemeToggle"
 import { useEmailStore } from "@/store/emailStore"
 import { EmailData } from "@/lib/email-utils"
+import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
 import { PenSquare, Menu, LogOut } from "lucide-react"
 
 function getAccountQuery(selectedAccountId: string | null) {
@@ -273,7 +274,7 @@ export default function Home() {
             <AccountSwitcher />
             <button
               onClick={async () => {
-                localStorage.removeItem("ai-mail-accounts")
+                localStorage.removeItem(ACCOUNT_STORAGE_KEY)
                 await signOut({ callbackUrl: "/login" })
               }}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"

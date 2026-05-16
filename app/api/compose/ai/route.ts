@@ -12,11 +12,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Subject or content is required" }, { status: 400 })
   }
 
-  const senderName = to || "there"
+  const recipientEmail = to || "there"
   const draft = await generateReplyDraftWithOptions(
     subject || "Draft email",
     content || subject,
-    senderName,
+    recipientEmail,
     { localMode: localAIMode }
   )
 

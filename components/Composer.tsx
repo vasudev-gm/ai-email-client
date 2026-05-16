@@ -30,7 +30,7 @@ export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerP
   const [sending, setSending] = useState(false)
   const [assisting, setAssisting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { localAIMode } = useEmailStore()
+  const { localAIMode = "heuristic" } = useEmailStore()
 
   if (!isOpen) return null
 
