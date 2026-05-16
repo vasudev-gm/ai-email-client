@@ -12,6 +12,7 @@ export default function LoginPage() {
     imapPort: "993",
   })
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
 
   const handleImapSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,6 +22,18 @@ export default function LoginPage() {
       callbackUrl: "/",
     })
     setLoading(false)
+  }
+
+  const handleDemoSignIn = async () => {
+    setDemoLoading(true)
+    await signIn("credentials", {
+      email: "demo@example.com",
+      password: "demo-mode",
+      imapHost: "demo.local",
+      imapPort: "993",
+      callbackUrl: "/",
+    })
+    setDemoLoading(false)
   }
 
   return (
@@ -75,6 +88,15 @@ export default function LoginPage() {
             {showImap ? "Hide IMAP/SMTP setup" : "Configure IMAP/SMTP manually"}
           </button>
 
+          <button
+            type="button"
+            onClick={handleDemoSignIn}
+            disabled={demoLoading}
+            className="w-full border border-blue-200 bg-blue-50 text-blue-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
+          >
+            {demoLoading ? "Entering demo..." : "Continue in Demo Mode"}
+          </button>
+
           {showImap && (
             <form onSubmit={handleImapSignIn} className="space-y-3 pt-2">
               <input
@@ -122,7 +144,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Demo mode: click any button to explore the app
+          Use &quot;Continue in Demo Mode&quot; for instant access without external account setup.
         </p>
       </div>
     </div>
