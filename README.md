@@ -59,10 +59,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `OPENAI_API_KEY` | No | OpenAI API key (alternative) |
 | `OPENAI_MODEL` | No | OpenAI model: gpt-5.4-nano, gpt-5.5, gpt-5.4-mini (default: gpt-5.4-nano) |
 | **Email OAuth** | | |
-| `GOOGLE_CLIENT_ID` | No | Google OAuth — required for Gmail accounts |
-| `GOOGLE_CLIENT_SECRET` | No | Google OAuth secret |
-| `MICROSOFT_CLIENT_ID` | No | Microsoft OAuth — required for Outlook accounts |
-| `MICROSOFT_CLIENT_SECRET` | No | Microsoft OAuth secret |
+| `GOOGLE_CLIENT_ID` | No | Custom Google OAuth — required for Gmail accounts |
+| `GOOGLE_CLIENT_SECRET` | No | Custom Google OAuth secret |
+| `MICROSOFT_CLIENT_ID` | No | Custom Microsoft OAuth — required for Outlook accounts |
+| `MICROSOFT_CLIENT_SECRET` | No | Custom Microsoft OAuth secret |
 
 **AI Provider Priority**: The system automatically selects the first available provider:
 
