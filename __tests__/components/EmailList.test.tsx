@@ -56,7 +56,9 @@ describe("EmailList", () => {
       />
     )
 
-    fireEvent.click(screen.getByText(/read status/i))
+    const readStatusButton = screen.getByRole("button", { name: /read status actions/i })
+    expect(readStatusButton).toBeInTheDocument()
+    fireEvent.click(readStatusButton)
     fireEvent.click(screen.getByRole("menuitem", { name: /mark all read/i }))
     expect(onBulkAction).toHaveBeenCalledWith(["1"], "markRead")
   })
