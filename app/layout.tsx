@@ -3,6 +3,7 @@ import Script from "next/script"
 import "./globals.css"
 import { Providers } from "./providers"
 import { THEME_INIT_SCRIPT } from "@/lib/theme"
+import PWARegister from "@/components/PWARegister"
 
 export const metadata: Metadata = {
   title: "AI Email Client",
@@ -40,6 +41,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="AI Mail" />
       </head>
       <body className="font-sans">
+        <PWARegister />
         <Providers>{children}</Providers>
       </body>
     </html>
