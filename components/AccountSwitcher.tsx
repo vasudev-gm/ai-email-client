@@ -322,7 +322,11 @@ export default function AccountSwitcher() {
                 <input
                   id="new-account-imap-host"
                   aria-invalid={imapHostError}
-                  aria-describedby={imapHostError ? "new-account-error" : customImapSelected ? "custom-imap-help" : undefined}
+                  aria-describedby={
+                    [customImapSelected ? "custom-imap-help" : null, imapHostError ? "new-account-error" : null]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                   value={imapHost}
                   onChange={(event) => setImapHost(event.target.value)}
                   placeholder="imap.example.com"
@@ -344,7 +348,7 @@ export default function AccountSwitcher() {
                 <input
                   id="new-account-imap-password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   aria-invalid={imapPasswordError}
                   aria-describedby={imapPasswordError ? "new-account-error" : undefined}
                   value={imapPassword}
