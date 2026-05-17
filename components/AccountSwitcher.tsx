@@ -20,17 +20,29 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/
 const PROVIDER_COLOR_MAP: Record<string, string> = {
   Google: "#EA4335",
+  "Google (IMAP)": "#EA4335",
   Gmail: "#EA4335",
   Microsoft: "#0A66C2",
+  "Microsoft (IMAP)": "#0A66C2",
   Yahoo: "#7E22CE",
   AOL: "#2563EB",
   IMAP: "#6B7280",
 }
 const IMAP_PROVIDER_DEFAULTS: Record<string, { host: string; port: string }> = {
+  GoogleIMAP: { host: "imap.gmail.com", port: "993" },
   Gmail: { host: "imap.gmail.com", port: "993" },
+  MicrosoftIMAP: { host: "outlook.office365.com", port: "993" },
   Yahoo: { host: "imap.mail.yahoo.com", port: "993" },
   AOL: { host: "imap.aol.com", port: "993" },
   IMAP: { host: "", port: "993" },
+}
+const IMAP_PROVIDER_LABELS: Record<string, string> = {
+  GoogleIMAP: "Google (IMAP)",
+  Gmail: "Gmail",
+  MicrosoftIMAP: "Microsoft (IMAP)",
+  Yahoo: "Yahoo",
+  AOL: "AOL",
+  IMAP: "IMAP",
 }
 
 export default function AccountSwitcher() {
@@ -144,7 +156,7 @@ export default function AccountSwitcher() {
     }
 
     const id = `acc${Date.now()}`
-    const providerLabel = newProvider === "IMAP" ? "IMAP" : newProvider
+    const providerLabel = IMAP_PROVIDER_LABELS[newProvider] || newProvider
     const account = {
       id,
       email,
@@ -271,8 +283,10 @@ export default function AccountSwitcher() {
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             >
               <option value="Google">Google (OAuth)</option>
+              <option value="GoogleIMAP">Google (IMAP fallback)</option>
               <option value="Gmail">Gmail (IMAP)</option>
-              <option value="Microsoft">Microsoft</option>
+              <option value="Microsoft">Microsoft (OAuth)</option>
+              <option value="MicrosoftIMAP">Microsoft (IMAP fallback)</option>
               <option value="Yahoo">Yahoo (IMAP)</option>
               <option value="AOL">AOL (IMAP)</option>
               <option value="IMAP">Other IMAP</option>

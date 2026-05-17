@@ -86,4 +86,60 @@ describe("AccountSwitcher", () => {
     )
     expect(await screen.findByText("gmail.user@gmail.com")).toBeInTheDocument()
   })
+
+  it("adds Google IMAP fallback account with provider defaults", async () => {
+    mockSignIn.mockResolvedValue({ ok: true })
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    fireEvent.change(screen.getByLabelText(/provider/i), {
+      target: { value: "GoogleIMAP" },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), {
+      target: { value: "google.imap@example.com" },
+    })
+    fireEvent.change(screen.getByLabelText(/password \/ app password/i), {
+      target: { value: "app-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
+
+    expect(mockSignIn).toHaveBeenCalledWith(
+      "credentials",
+      expect.objectContaining({
+        email: "google.imap@example.com",
+        imapHost: "imap.gmail.com",
+        imapPort: "993",
+      })
+    )
+    expect(await screen.findByText("google.imap@example.com")).toBeInTheDocument()
+  })
+
+  it("adds Microsoft IMAP fallback account with provider defaults", async () => {
+    mockSignIn.mockResolvedValue({ ok: true })
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    fireEvent.change(screen.getByLabelText(/provider/i), {
+      target: { value: "MicrosoftIMAP" },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), {
+      target: { value: "msft.imap@example.com" },
+    })
+    fireEvent.change(screen.getByLabelText(/password \/ app password/i), {
+      target: { value: "app-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
+
+    expect(mockSignIn).toHaveBeenCalledWith(
+      "credentials",
+      expect.objectContaining({
+        email: "msft.imap@example.com",
+        imapHost: "outlook.office365.com",
+        imapPort: "993",
+      })
+    )
+    expect(await screen.findByText("msft.imap@example.com")).toBeInTheDocument()
+  })
 })
