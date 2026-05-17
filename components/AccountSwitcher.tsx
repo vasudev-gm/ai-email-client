@@ -134,6 +134,15 @@ export default function AccountSwitcher() {
       setError("Enter a valid email address.")
       return
     }
+    const normalizedEmail = email.toLowerCase()
+    if (newProvider === "Gmail" && !normalizedEmail.endsWith("@gmail.com")) {
+      setError("Use a @gmail.com address for Gmail IMAP.")
+      return
+    }
+    if (newProvider === "GoogleIMAP" && normalizedEmail.endsWith("@gmail.com")) {
+      setError("Use Gmail (IMAP direct) for @gmail.com addresses.")
+      return
+    }
     if (!imapHost.trim()) {
       setError("IMAP host is required.")
       return
@@ -284,7 +293,7 @@ export default function AccountSwitcher() {
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             >
               <option value="Google">Google (OAuth)</option>
-              <option value="GoogleIMAP">Google (IMAP fallback)</option>
+              <option value="GoogleIMAP">Google Workspace (IMAP fallback)</option>
               <option value="Gmail">Gmail (IMAP direct)</option>
               <option value="Microsoft">Microsoft (OAuth)</option>
               <option value="MicrosoftIMAP">Microsoft (IMAP fallback)</option>

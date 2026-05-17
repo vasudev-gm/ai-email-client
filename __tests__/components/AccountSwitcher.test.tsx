@@ -142,4 +142,24 @@ describe("AccountSwitcher", () => {
     )
     expect(await screen.findByText("msft.imap@example.com")).toBeInTheDocument()
   })
+
+  it("requires Gmail provider for @gmail.com when using Google IMAP fallback", async () => {
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    fireEvent.change(screen.getByLabelText(/provider/i), {
+      target: { value: "GoogleIMAP" },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), {
+      target: { value: "person@gmail.com" },
+    })
+    fireEvent.change(screen.getByLabelText(/password \/ app password/i), {
+      target: { value: "app-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
+
+    expect(await screen.findByText(/use gmail \(imap direct\) for @gmail\.com addresses\./i)).toBeInTheDocument()
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
 })
