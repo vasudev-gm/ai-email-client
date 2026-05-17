@@ -58,4 +58,32 @@ describe("AccountSwitcher", () => {
 
     expect(mockSignIn).toHaveBeenCalledWith("google", { callbackUrl: "/" })
   })
+
+  it("adds Gmail IMAP account with provider defaults", async () => {
+    mockSignIn.mockResolvedValue({ ok: true })
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    fireEvent.change(screen.getByLabelText(/provider/i), {
+      target: { value: "Gmail" },
+    })
+    fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), {
+      target: { value: "gmail.user@gmail.com" },
+    })
+    fireEvent.change(screen.getByLabelText(/password \/ app password/i), {
+      target: { value: "app-password" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
+
+    expect(mockSignIn).toHaveBeenCalledWith(
+      "credentials",
+      expect.objectContaining({
+        email: "gmail.user@gmail.com",
+        imapHost: "imap.gmail.com",
+        imapPort: "993",
+      })
+    )
+    expect(await screen.findByText("gmail.user@gmail.com")).toBeInTheDocument()
+  })
 })

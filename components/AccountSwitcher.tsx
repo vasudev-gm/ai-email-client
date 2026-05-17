@@ -20,12 +20,14 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/
 const PROVIDER_COLOR_MAP: Record<string, string> = {
   Google: "#EA4335",
+  Gmail: "#EA4335",
   Microsoft: "#0A66C2",
   Yahoo: "#7E22CE",
   AOL: "#2563EB",
   IMAP: "#6B7280",
 }
 const IMAP_PROVIDER_DEFAULTS: Record<string, { host: string; port: string }> = {
+  Gmail: { host: "imap.gmail.com", port: "993" },
   Yahoo: { host: "imap.mail.yahoo.com", port: "993" },
   AOL: { host: "imap.aol.com", port: "993" },
   IMAP: { host: "", port: "993" },
@@ -167,7 +169,7 @@ export default function AccountSwitcher() {
     setIsAdding(false)
   }
 
-  const requiresImapFields = newProvider === "IMAP" || newProvider === "Yahoo" || newProvider === "AOL"
+  const requiresImapFields = newProvider in IMAP_PROVIDER_DEFAULTS
 
   return (
     <div className="relative">
@@ -268,7 +270,8 @@ export default function AccountSwitcher() {
               onChange={(event) => handleProviderChange(event.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             >
-              <option value="Google">Google</option>
+              <option value="Google">Google (OAuth)</option>
+              <option value="Gmail">Gmail (IMAP)</option>
               <option value="Microsoft">Microsoft</option>
               <option value="Yahoo">Yahoo (IMAP)</option>
               <option value="AOL">AOL (IMAP)</option>
