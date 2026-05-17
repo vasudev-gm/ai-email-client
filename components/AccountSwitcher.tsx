@@ -28,9 +28,10 @@ const PROVIDER_COLOR_MAP: Record<string, string> = {
   AOL: "#2563EB",
   IMAP: "#6B7280",
 }
+const GOOGLE_IMAP_DEFAULTS = { host: "imap.gmail.com", port: "993" }
 const IMAP_PROVIDER_DEFAULTS: Record<string, { host: string; port: string }> = {
-  GoogleIMAP: { host: "imap.gmail.com", port: "993" },
-  Gmail: { host: "imap.gmail.com", port: "993" },
+  GoogleIMAP: GOOGLE_IMAP_DEFAULTS,
+  Gmail: GOOGLE_IMAP_DEFAULTS,
   MicrosoftIMAP: { host: "outlook.office365.com", port: "993" },
   Yahoo: { host: "imap.mail.yahoo.com", port: "993" },
   AOL: { host: "imap.aol.com", port: "993" },
@@ -284,7 +285,7 @@ export default function AccountSwitcher() {
             >
               <option value="Google">Google (OAuth)</option>
               <option value="GoogleIMAP">Google (IMAP fallback)</option>
-              <option value="Gmail">Gmail (IMAP)</option>
+              <option value="Gmail">Gmail (IMAP direct)</option>
               <option value="Microsoft">Microsoft (OAuth)</option>
               <option value="MicrosoftIMAP">Microsoft (IMAP fallback)</option>
               <option value="Yahoo">Yahoo (IMAP)</option>
