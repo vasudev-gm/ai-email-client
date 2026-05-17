@@ -140,7 +140,7 @@ export default function AccountSwitcher() {
       return
     }
     if (newProvider === "GoogleIMAP" && normalizedEmail.endsWith("@gmail.com")) {
-      setError("Use Gmail (IMAP direct) for @gmail.com addresses.")
+      setError("Use Gmail (IMAP direct) for @gmail.com addresses by selecting it in Provider.")
       return
     }
     if (!imapHost.trim()) {

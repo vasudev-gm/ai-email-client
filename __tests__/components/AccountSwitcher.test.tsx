@@ -159,7 +159,7 @@ describe("AccountSwitcher", () => {
     })
     fireEvent.click(screen.getByRole("button", { name: /^add$/i }))
 
-    expect(await screen.findByText(/use gmail \(imap direct\) for @gmail\.com addresses\./i)).toBeInTheDocument()
+    expect(await screen.findByText(/use gmail \(imap direct\) for @gmail\.com addresses/i)).toBeInTheDocument()
     expect(mockSignIn).not.toHaveBeenCalled()
   })
 })
