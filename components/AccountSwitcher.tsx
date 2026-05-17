@@ -74,6 +74,7 @@ export default function AccountSwitcher() {
   const [imapPort, setImapPort] = useState("993")
   const [imapPassword, setImapPassword] = useState("")
   const [error, setError] = useState("")
+  const [errorField, setErrorField] = useState<"email" | "imapHost" | "imapPassword" | null>(null)
   const { selectedAccountId, setSelectedAccountId } = useEmailStore()
   const sessionEmail = session?.user?.email
   const sessionAccount = useMemo(
@@ -107,6 +108,7 @@ export default function AccountSwitcher() {
   const handleProviderChange = (provider: string) => {
     setNewProvider(provider)
     setError("")
+    setErrorField(null)
     if (provider in IMAP_PROVIDER_DEFAULTS) {
       const defaults = IMAP_PROVIDER_DEFAULTS[provider]
       setImapHost(defaults.host)
@@ -116,6 +118,7 @@ export default function AccountSwitcher() {
 
   const handleAddAccount = async () => {
     setError("")
+    setErrorField(null)
     if (newProvider === "Google") {
       await signIn("google", { callbackUrl: "/" })
       return
@@ -128,27 +131,33 @@ export default function AccountSwitcher() {
     const email = newEmail.trim()
     if (!email) {
       setError("Email is required.")
+      setErrorField("email")
       return
     }
     if (!EMAIL_REGEX.test(email)) {
       setError("Enter a valid email address.")
+      setErrorField("email")
       return
     }
     const normalizedEmail = email.toLowerCase()
     if (newProvider === "Gmail" && !normalizedEmail.endsWith("@gmail.com")) {
       setError("Use a @gmail.com address for Gmail IMAP.")
+      setErrorField("email")
       return
     }
     if (newProvider === "GoogleIMAP" && normalizedEmail.endsWith("@gmail.com")) {
       setError("Use Gmail (IMAP direct) for @gmail.com addresses by selecting it in Provider.")
+      setErrorField("email")
       return
     }
     if (!imapHost.trim()) {
       setError("IMAP host is required.")
+      setErrorField("imapHost")
       return
     }
     if (!imapPassword.trim()) {
       setError("Password is required.")
+      setErrorField("imapPassword")
       return
     }
 
@@ -162,6 +171,7 @@ export default function AccountSwitcher() {
     if (!connectResult?.ok) {
       const reason = connectResult?.error ? ` (${connectResult.error})` : ""
       setError(`Couldn't connect account. Check credentials and IMAP host/port${reason}.`)
+      setErrorField(null)
       return
     }
 
@@ -181,21 +191,23 @@ export default function AccountSwitcher() {
     setImapPort("993")
     setImapPassword("")
     setError("")
+    setErrorField(null)
     setIsAdding(false)
     setIsOpen(false)
   }
 
   const closeAddDialog = () => {
     setError("")
+    setErrorField(null)
     setNewProvider("IMAP")
     setIsAdding(false)
   }
 
   const requiresImapFields = newProvider in IMAP_PROVIDER_DEFAULTS
   const customImapSelected = newProvider === "IMAP"
-  const emailError = error.toLowerCase().includes("email")
-  const imapHostError = error.toLowerCase().includes("imap host")
-  const imapPasswordError = error.toLowerCase().includes("password")
+  const emailError = errorField === "email"
+  const imapHostError = errorField === "imapHost"
+  const imapPasswordError = errorField === "imapPassword"
 
   return (
     <div className="relative">
@@ -348,7 +360,7 @@ export default function AccountSwitcher() {
                 <input
                   id="new-account-imap-password"
                   type="password"
-                  autoComplete="new-password"
+                  autoComplete="off"
                   aria-invalid={imapPasswordError}
                   aria-describedby={imapPasswordError ? "new-account-error" : undefined}
                   value={imapPassword}
