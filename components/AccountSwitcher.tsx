@@ -192,6 +192,10 @@ export default function AccountSwitcher() {
   }
 
   const requiresImapFields = newProvider in IMAP_PROVIDER_DEFAULTS
+  const customImapSelected = newProvider === "IMAP"
+  const emailError = error.toLowerCase().includes("email")
+  const imapHostError = error.toLowerCase().includes("imap host")
+  const imapPasswordError = error.toLowerCase().includes("password")
 
   return (
     <div className="relative">
@@ -277,15 +281,20 @@ export default function AccountSwitcher() {
             className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-sm p-4 space-y-3 border border-transparent dark:border-gray-700"
           >
             <h3 id="add-account-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add account</h3>
-            <label htmlFor="new-account-email" className="text-xs text-gray-600 dark:text-gray-300 block">Email</label>
+            <label htmlFor="new-account-email" className="text-sm font-medium text-gray-700 dark:text-gray-200 block">Email</label>
             <input
               id="new-account-email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              aria-invalid={emailError}
+              aria-describedby={emailError ? "new-account-error" : undefined}
               value={newEmail}
               onChange={(event) => setNewEmail(event.target.value)}
               placeholder="name@example.com"
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             />
-            <label htmlFor="new-account-provider" className="text-xs text-gray-600 dark:text-gray-300 block">Provider</label>
+            <label htmlFor="new-account-provider" className="text-sm font-medium text-gray-700 dark:text-gray-200 block">Provider</label>
             <select
               id="new-account-provider"
               value={newProvider}
@@ -302,36 +311,51 @@ export default function AccountSwitcher() {
               <option value="IMAP">Other IMAP</option>
             </select>
             {requiresImapFields && (
-              <>
-                <label htmlFor="new-account-imap-host" className="text-xs text-gray-600 dark:text-gray-300 block">IMAP Host</label>
+              <fieldset className="space-y-2" aria-describedby={customImapSelected ? "custom-imap-help" : undefined}>
+                <legend className="text-sm font-medium text-gray-700 dark:text-gray-200">IMAP settings</legend>
+                {customImapSelected && (
+                  <p id="custom-imap-help" className="text-xs text-gray-600 dark:text-gray-300">
+                    Enter your provider&apos;s IMAP server and app password.
+                  </p>
+                )}
+                <label htmlFor="new-account-imap-host" className="text-sm font-medium text-gray-700 dark:text-gray-200 block">IMAP Host</label>
                 <input
                   id="new-account-imap-host"
+                  aria-invalid={imapHostError}
+                  aria-describedby={imapHostError ? "new-account-error" : customImapSelected ? "custom-imap-help" : undefined}
                   value={imapHost}
                   onChange={(event) => setImapHost(event.target.value)}
                   placeholder="imap.example.com"
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                 />
-                <label htmlFor="new-account-imap-port" className="text-xs text-gray-600 dark:text-gray-300 block">IMAP Port</label>
+                <label htmlFor="new-account-imap-port" className="text-sm font-medium text-gray-700 dark:text-gray-200 block">IMAP Port</label>
                 <input
                   id="new-account-imap-port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  inputMode="numeric"
                   value={imapPort}
                   onChange={(event) => setImapPort(event.target.value)}
                   placeholder="993"
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                 />
-                <label htmlFor="new-account-imap-password" className="text-xs text-gray-600 dark:text-gray-300 block">Password / App Password</label>
+                <label htmlFor="new-account-imap-password" className="text-sm font-medium text-gray-700 dark:text-gray-200 block">Password / App Password</label>
                 <input
                   id="new-account-imap-password"
                   type="password"
+                  autoComplete="current-password"
+                  aria-invalid={imapPasswordError}
+                  aria-describedby={imapPasswordError ? "new-account-error" : undefined}
                   value={imapPassword}
                   onChange={(event) => setImapPassword(event.target.value)}
                   placeholder="••••••••"
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                 />
-              </>
+              </fieldset>
             )}
             {error && (
-              <p className="text-xs text-red-600" role="status" aria-live="polite">{error}</p>
+              <p id="new-account-error" className="text-xs text-red-600" role="status" aria-live="polite">{error}</p>
             )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={closeAddDialog} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">

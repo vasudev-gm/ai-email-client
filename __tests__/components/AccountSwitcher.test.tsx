@@ -162,4 +162,16 @@ describe("AccountSwitcher", () => {
     expect(await screen.findByText(/use gmail \(imap direct\) for @gmail\.com addresses/i)).toBeInTheDocument()
     expect(mockSignIn).not.toHaveBeenCalled()
   })
+
+  it("shows custom IMAP guidance text for Other IMAP provider", () => {
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+    fireEvent.change(screen.getByLabelText(/provider/i), {
+      target: { value: "IMAP" },
+    })
+
+    expect(screen.getByText(/enter your provider's imap server and app password/i)).toBeInTheDocument()
+  })
 })
