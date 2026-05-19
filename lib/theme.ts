@@ -7,6 +7,11 @@ export function getPreferredThemeFromBrowser(win: Window): "light" | "dark" {
   return win.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : DEFAULT_THEME
 }
 
+export function applyThemeFromBrowser(doc: Document, win: Window) {
+  const preferredTheme = getPreferredThemeFromBrowser(win)
+  doc.documentElement.classList.toggle("dark", preferredTheme === "dark")
+}
+
 export const THEME_INIT_SCRIPT = `
   (() => {
     const savedTheme = localStorage.getItem("${THEME_STORAGE_KEY}");

@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, getPreferredThemeFromBrowser, THEME_INIT_SCRIPT } from "@/lib/theme"
+import { applyThemeFromBrowser, DEFAULT_THEME, getPreferredThemeFromBrowser } from "@/lib/theme"
 
 describe("theme utilities", () => {
   const originalMatchMedia = window.matchMedia
@@ -21,26 +21,24 @@ describe("theme utilities", () => {
     expect(getPreferredThemeFromBrowser(window)).toBe("dark")
   })
 
-  it("theme init script applies dark mode from device settings", () => {
+  it("applies dark mode from device settings", () => {
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: jest.fn().mockImplementation(() => ({ matches: true })),
     })
     window.localStorage.removeItem("theme")
-
-    new Function(THEME_INIT_SCRIPT)()
+    applyThemeFromBrowser(document, window)
 
     expect(document.documentElement.classList.contains("dark")).toBe(true)
   })
 
-  it("theme init script respects saved theme over device preference", () => {
+  it("respects saved theme over device preference", () => {
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: jest.fn().mockImplementation(() => ({ matches: true })),
     })
     window.localStorage.setItem("theme", DEFAULT_THEME)
-
-    new Function(THEME_INIT_SCRIPT)()
+    applyThemeFromBrowser(document, window)
 
     expect(document.documentElement.classList.contains("dark")).toBe(false)
   })
