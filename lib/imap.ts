@@ -8,7 +8,7 @@ export interface ImapConfig {
   tls?: boolean
 }
 
-const SMTP_PORTS = new Set([25, 465, 587])
+const COMMON_SMTP_PORTS = new Set([25, 465, 587])
 
 export function normalizeImapEndpoint(host: string, port: number) {
   const trimmedHost = host.trim()
@@ -23,8 +23,9 @@ export function normalizeImapEndpoint(host: string, port: number) {
     normalizedHost = `imap.${lowerHost.slice(5)}`
   }
 
+  const hostWasNormalized = normalizedHost !== trimmedHost
   const normalizedPort =
-    normalizedHost !== trimmedHost && SMTP_PORTS.has(port) ? 993 : port
+    hostWasNormalized && COMMON_SMTP_PORTS.has(port) ? 993 : port
 
   return { host: normalizedHost, port: normalizedPort }
 }
