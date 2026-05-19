@@ -75,4 +75,32 @@ describe("normalizeImapEndpoint", () => {
       port: 993,
     })
   })
+
+  it("keeps non-SMTP ports when host is normalized", () => {
+    expect(normalizeImapEndpoint("smtp.gmail.com", 143)).toEqual({
+      host: "imap.gmail.com",
+      port: 143,
+    })
+  })
+
+  it("normalizes smtp-mail.outlook.com mapping", () => {
+    expect(normalizeImapEndpoint("smtp-mail.outlook.com", 587)).toEqual({
+      host: "imap-mail.outlook.com",
+      port: 993,
+    })
+  })
+
+  it("normalizes case variations for smtp-prefixed hosts", () => {
+    expect(normalizeImapEndpoint("SMTP.office365.com", 587)).toEqual({
+      host: "outlook.office365.com",
+      port: 993,
+    })
+  })
+
+  it("leaves non-smtp hosts unchanged", () => {
+    expect(normalizeImapEndpoint("imap.custom-provider.example", 993)).toEqual({
+      host: "imap.custom-provider.example",
+      port: 993,
+    })
+  })
 })

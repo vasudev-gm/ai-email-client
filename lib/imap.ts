@@ -20,7 +20,7 @@ export function normalizeImapEndpoint(host: string, port: number) {
   } else if (lowerHost === "smtp-mail.outlook.com") {
     normalizedHost = "imap-mail.outlook.com"
   } else if (lowerHost.startsWith("smtp.")) {
-    normalizedHost = `imap.${trimmedHost.slice(5)}`
+    normalizedHost = `imap.${lowerHost.slice(5)}`
   }
 
   const normalizedPort =
