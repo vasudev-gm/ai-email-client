@@ -48,4 +48,10 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /continue with microsoft/i })).toBeInTheDocument()
   })
+
+  it("includes dark mode styles for system-theme rendering", () => {
+    const { container } = render(<LoginPage />)
+    expect(container.firstChild).toHaveClass("dark:from-slate-950")
+    expect(screen.getByText("AI Email Client").closest("h1")).toHaveClass("dark:text-gray-100")
+  })
 })

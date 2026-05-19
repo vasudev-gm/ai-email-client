@@ -37,12 +37,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl dark:shadow-slate-950/40 p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">✉️</div>
-          <h1 className="text-2xl font-bold text-gray-900">AI Email Client</h1>
-          <p className="text-gray-500 mt-2">Sign in to access your emails</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI Email Client</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in to access your emails</p>
         </div>
 
         <div className="space-y-3">
@@ -50,15 +50,15 @@ export default function LoginPage() {
             type="button"
             onClick={handleDemoSignIn}
             disabled={demoLoading}
-            className="w-full border border-blue-200 bg-blue-50 text-blue-700 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
+            className="w-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50"
           >
             {demoLoading ? "Entering demo..." : "Continue in Demo Mode"}
           </button>
 
           <form onSubmit={handleImapSignIn} className="space-y-3 pt-2">
-            <h2 className="text-sm font-semibold text-gray-800">Sign in with IMAP/SMTP</h2>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Sign in with IMAP/SMTP</h2>
             <div className="space-y-1">
-              <label htmlFor="imap-email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="imap-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email address
               </label>
               <input
@@ -69,12 +69,12 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={imapForm.email}
                 onChange={e => setImapForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="imap-password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="imap-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password / App Password
               </label>
               <input
@@ -85,13 +85,13 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={imapForm.password}
                 onChange={e => setImapForm(f => ({ ...f, password: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
             <div className="flex gap-2">
               <div className="flex-1 space-y-1">
-                <label htmlFor="imap-host" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="imap-host" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   IMAP host
                 </label>
                 <input
@@ -101,12 +101,12 @@ export default function LoginPage() {
                   placeholder="IMAP Host (e.g. imap.gmail.com)"
                   value={imapForm.imapHost}
                   onChange={e => setImapForm(f => ({ ...f, imapHost: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
               <div className="w-24 space-y-1">
-                <label htmlFor="imap-port" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="imap-port" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Port
                 </label>
                 <input
@@ -119,7 +119,7 @@ export default function LoginPage() {
                   max={65535}
                   value={imapForm.imapPort}
                   onChange={e => setImapForm(f => ({ ...f, imapPort: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -135,7 +135,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowOauth(!showOauth)}
-            className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2"
+            className="w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-2"
           >
             {showOauth ? "Hide OAuth2 sign-in options" : "Use OAuth2 sign-in options instead"}
           </button>
@@ -145,7 +145,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => signIn("google", { callbackUrl: "/" })}
-                className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition-colors font-medium text-gray-700"
+                className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-slate-700 rounded-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-gray-700 dark:text-gray-200"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -159,7 +159,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
-                className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition-colors font-medium text-gray-700"
+                className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-slate-700 rounded-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-gray-700 dark:text-gray-200"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#F25022" d="M1 1h10v10H1z"/>
@@ -173,7 +173,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
           Use the Continue in Demo Mode option for instant access without external account setup.
         </p>
       </div>
