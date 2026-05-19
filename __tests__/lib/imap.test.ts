@@ -15,7 +15,8 @@ describe("verifyImapConnection", () => {
     const mailboxOpen = jest.fn().mockResolvedValue(undefined)
     const logout = jest.fn().mockResolvedValue(undefined)
 
-    ;(ImapFlow as unknown as jest.Mock).mockImplementation(() => ({
+    const mockImapFlow = ImapFlow as unknown as jest.Mock
+    mockImapFlow.mockImplementation(() => ({
       connect,
       mailboxOpen,
       logout,

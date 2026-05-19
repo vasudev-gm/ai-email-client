@@ -58,7 +58,9 @@ function buildAuthProviders() {
             password: credentials.password as string,
             tls: true,
           })
-        } catch {
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "unknown error"
+          console.warn("IMAP credentials authorize failed", { message })
           return null
         }
 
