@@ -45,6 +45,15 @@ function buildAuthProviders() {
           return null
         }
 
+        const isDemoMode = credentials.imapHost === "demo.local"
+        if (isDemoMode) {
+          return {
+            id: credentials.email as string,
+            email: credentials.email as string,
+            name: credentials.email as string,
+          }
+        }
+
         const parsedPort = Number(credentials.imapPort ?? 993)
         if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
           return null
