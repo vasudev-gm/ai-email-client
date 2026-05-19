@@ -1,5 +1,5 @@
 import { ImapFlow } from "imapflow"
-import { verifyImapConnection } from "@/lib/imap"
+import { normalizeImapEndpoint, verifyImapConnection } from "@/lib/imap"
 
 jest.mock("imapflow", () => ({
   ImapFlow: jest.fn(),
@@ -58,5 +58,21 @@ describe("verifyImapConnection", () => {
     ).rejects.toThrow("IMAP host is required")
 
     expect(ImapFlow).not.toHaveBeenCalled()
+  })
+})
+
+describe("normalizeImapEndpoint", () => {
+  it("normalizes Outlook SMTP endpoint to IMAP endpoint and port", () => {
+    expect(normalizeImapEndpoint("smtp.office365.com", 587)).toEqual({
+      host: "outlook.office365.com",
+      port: 993,
+    })
+  })
+
+  it("normalizes generic smtp host prefix to imap", () => {
+    expect(normalizeImapEndpoint("smtp.gmail.com", 587)).toEqual({
+      host: "imap.gmail.com",
+      port: 993,
+    })
   })
 })

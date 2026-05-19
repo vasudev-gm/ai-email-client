@@ -8,6 +8,27 @@ export interface ImapConfig {
   tls?: boolean
 }
 
+const SMTP_PORTS = new Set([25, 465, 587])
+
+export function normalizeImapEndpoint(host: string, port: number) {
+  const trimmedHost = host.trim()
+  const lowerHost = trimmedHost.toLowerCase()
+
+  let normalizedHost = trimmedHost
+  if (lowerHost === "smtp.office365.com") {
+    normalizedHost = "outlook.office365.com"
+  } else if (lowerHost === "smtp-mail.outlook.com") {
+    normalizedHost = "imap-mail.outlook.com"
+  } else if (lowerHost.startsWith("smtp.")) {
+    normalizedHost = `imap.${trimmedHost.slice(5)}`
+  }
+
+  const normalizedPort =
+    normalizedHost !== trimmedHost && SMTP_PORTS.has(port) ? 993 : port
+
+  return { host: normalizedHost, port: normalizedPort }
+}
+
 function assertValidImapConfig(config: ImapConfig) {
   if (!config.host.trim()) {
     throw new Error("IMAP host is required")
@@ -25,9 +46,10 @@ function assertValidImapConfig(config: ImapConfig) {
 
 export async function verifyImapConnection(config: ImapConfig, folder = "INBOX") {
   assertValidImapConfig(config)
+  const endpoint = normalizeImapEndpoint(config.host, config.port)
   const client = new ImapFlow({
-    host: config.host.trim(),
-    port: config.port,
+    host: endpoint.host,
+    port: endpoint.port,
     secure: config.tls ?? true,
     auth: {
       user: config.user.trim(),
