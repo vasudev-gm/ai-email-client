@@ -37,9 +37,9 @@ describe("LoginPage", () => {
     expect(screen.getByRole("heading", { name: /sign in with imap\/smtp/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password \/ app password/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/imap host/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/imap\/smtp host/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^port$/i)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/imap host/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/imap\/smtp host/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /connect via imap\/smtp/i })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /continue with google/i })).not.toBeInTheDocument()
 
@@ -56,5 +56,34 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText(/email address/i)).toHaveClass("dark:bg-slate-950")
     expect(screen.getByRole("button", { name: /continue in demo mode/i })).toHaveClass("dark:bg-blue-950/30")
     expect(screen.getByRole("button", { name: /use oauth2 sign-in options instead/i })).toHaveClass("dark:text-blue-400")
+  })
+
+  it("prefills SMTP host based on common email domains", () => {
+    render(<LoginPage />)
+
+    const emailInput = screen.getByLabelText(/email address/i)
+    const hostInput = screen.getByLabelText(/imap\/smtp host/i)
+
+    fireEvent.change(emailInput, { target: { value: "person@gmail.com" } })
+    expect(hostInput).toHaveValue("smtp.gmail.com")
+
+    fireEvent.change(emailInput, { target: { value: "person@outlook.com" } })
+    expect(hostInput).toHaveValue("smtp.office365.com")
+
+    fireEvent.change(emailInput, { target: { value: "person@aol.com" } })
+    expect(hostInput).toHaveValue("smtp.aol.com")
+  })
+
+  it("does not override a manually entered host when email changes", () => {
+    render(<LoginPage />)
+
+    const emailInput = screen.getByLabelText(/email address/i)
+    const hostInput = screen.getByLabelText(/imap\/smtp host/i)
+
+    fireEvent.change(emailInput, { target: { value: "person@gmail.com" } })
+    fireEvent.change(hostInput, { target: { value: "custom.mail.example.com" } })
+    fireEvent.change(emailInput, { target: { value: "person@outlook.com" } })
+
+    expect(hostInput).toHaveValue("custom.mail.example.com")
   })
 })

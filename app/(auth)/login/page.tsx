@@ -3,6 +3,21 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 
+function suggestSmtpHostFromEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail.includes("@")) return ""
+
+  const domain = normalizedEmail.split("@")[1]
+  if (!domain) return ""
+
+  if (domain === "gmail.com") return "smtp.gmail.com"
+  if (domain === "aol.com") return "smtp.aol.com"
+  if (domain === "yahoo.com" || domain === "yahoo.co.uk") return "smtp.mail.yahoo.com"
+  if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) return "smtp.office365.com"
+
+  return ""
+}
+
 export default function LoginPage() {
   const [showOauth, setShowOauth] = useState(false)
   const [imapForm, setImapForm] = useState({
@@ -68,7 +83,21 @@ export default function LoginPage() {
                 placeholder="Email address"
                 autoComplete="email"
                 value={imapForm.email}
-                onChange={e => setImapForm(f => ({ ...f, email: e.target.value }))}
+                onChange={e =>
+                  setImapForm(f => {
+                    const email = e.target.value
+                    const previousSuggestedHost = suggestSmtpHostFromEmail(f.email)
+                    const nextSuggestedHost = suggestSmtpHostFromEmail(email)
+                    const shouldUpdateHost =
+                      Boolean(nextSuggestedHost) && (!f.imapHost || f.imapHost === previousSuggestedHost)
+
+                    return {
+                      ...f,
+                      email,
+                      imapHost: shouldUpdateHost ? nextSuggestedHost : f.imapHost,
+                    }
+                  })
+                }
                 className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -92,13 +121,13 @@ export default function LoginPage() {
             <div className="flex gap-2">
               <div className="flex-1 space-y-1">
                 <label htmlFor="imap-host" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  IMAP host
+                  IMAP/SMTP host
                 </label>
                 <input
                   id="imap-host"
                   name="imapHost"
                   type="text"
-                  placeholder="IMAP Host (e.g. imap.gmail.com)"
+                  placeholder="IMAP/SMTP Host (e.g. imap.gmail.com or smtp.gmail.com)"
                   value={imapForm.imapHost}
                   onChange={e => setImapForm(f => ({ ...f, imapHost: e.target.value }))}
                   className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
