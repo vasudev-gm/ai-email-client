@@ -34,6 +34,11 @@ describe("LoginPage", () => {
   it("prefers IMAP/SMTP by default and keeps OAuth2 options collapsed", () => {
     render(<LoginPage />)
 
+    expect(screen.getByRole("heading", { name: /sign in with imap\/smtp/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/password \/ app password/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/imap host/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^port$/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/imap host/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /connect via imap\/smtp/i })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /continue with google/i })).not.toBeInTheDocument()

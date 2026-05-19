@@ -56,38 +56,72 @@ export default function LoginPage() {
           </button>
 
           <form onSubmit={handleImapSignIn} className="space-y-3 pt-2">
-            <input
-              type="email"
-              placeholder="Email address"
-              value={imapForm.email}
-              onChange={e => setImapForm(f => ({ ...f, email: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password / App Password"
-              value={imapForm.password}
-              onChange={e => setImapForm(f => ({ ...f, password: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <div className="flex gap-2">
+            <h2 className="text-sm font-semibold text-gray-800">Sign in with IMAP/SMTP</h2>
+            <div className="space-y-1">
+              <label htmlFor="imap-email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
               <input
-                type="text"
-                placeholder="IMAP Host (e.g. imap.gmail.com)"
-                value={imapForm.imapHost}
-                onChange={e => setImapForm(f => ({ ...f, imapHost: e.target.value }))}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                id="imap-email"
+                name="email"
+                type="email"
+                placeholder="Email address"
+                autoComplete="email"
+                value={imapForm.email}
+                onChange={e => setImapForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="imap-password" className="block text-sm font-medium text-gray-700">
+                Password / App Password
+              </label>
               <input
-                type="number"
-                placeholder="Port"
-                value={imapForm.imapPort}
-                onChange={e => setImapForm(f => ({ ...f, imapPort: e.target.value }))}
-                className="w-20 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                id="imap-password"
+                name="password"
+                type="password"
+                placeholder="Password / App Password"
+                autoComplete="current-password"
+                value={imapForm.password}
+                onChange={e => setImapForm(f => ({ ...f, password: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-1">
+                <label htmlFor="imap-host" className="block text-sm font-medium text-gray-700">
+                  IMAP host
+                </label>
+                <input
+                  id="imap-host"
+                  name="imapHost"
+                  type="text"
+                  placeholder="IMAP Host (e.g. imap.gmail.com)"
+                  value={imapForm.imapHost}
+                  onChange={e => setImapForm(f => ({ ...f, imapHost: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="w-24 space-y-1">
+                <label htmlFor="imap-port" className="block text-sm font-medium text-gray-700">
+                  Port
+                </label>
+                <input
+                  id="imap-port"
+                  name="imapPort"
+                  type="number"
+                  placeholder="Port"
+                  inputMode="numeric"
+                  min={1}
+                  max={65535}
+                  value={imapForm.imapPort}
+                  onChange={e => setImapForm(f => ({ ...f, imapPort: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
             <button
               type="submit"
@@ -99,6 +133,7 @@ export default function LoginPage() {
           </form>
 
           <button
+            type="button"
             onClick={() => setShowOauth(!showOauth)}
             className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2"
           >
@@ -108,6 +143,7 @@ export default function LoginPage() {
           {showOauth && (
             <>
               <button
+                type="button"
                 onClick={() => signIn("google", { callbackUrl: "/" })}
                 className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition-colors font-medium text-gray-700"
               >
@@ -121,6 +157,7 @@ export default function LoginPage() {
               </button>
 
               <button
+                type="button"
                 onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
                 className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition-colors font-medium text-gray-700"
               >
