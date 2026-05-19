@@ -53,5 +53,8 @@ describe("LoginPage", () => {
     const { container } = render(<LoginPage />)
     expect(container.firstChild).toHaveClass("dark:from-slate-950")
     expect(screen.getByText("AI Email Client").closest("h1")).toHaveClass("dark:text-gray-100")
+    expect(screen.getByLabelText(/email address/i)).toHaveClass("dark:bg-slate-950")
+    expect(screen.getByRole("button", { name: /continue in demo mode/i })).toHaveClass("dark:bg-blue-950/30")
+    expect(screen.getByRole("button", { name: /use oauth2 sign-in options instead/i })).toHaveClass("dark:text-blue-400")
   })
 })
