@@ -30,4 +30,17 @@ describe("LoginPage", () => {
       })
     })
   })
+
+  it("prefers IMAP/SMTP by default and keeps OAuth2 options collapsed", () => {
+    render(<LoginPage />)
+
+    expect(screen.getByPlaceholderText(/imap host/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /connect via imap\/smtp/i })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /continue with google/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /use oauth2 sign-in options instead/i }))
+
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /continue with microsoft/i })).toBeInTheDocument()
+  })
 })
