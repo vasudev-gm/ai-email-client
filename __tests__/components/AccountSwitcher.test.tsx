@@ -174,4 +174,24 @@ describe("AccountSwitcher", () => {
 
     expect(screen.getByText(/enter your provider's imap server and app password/i)).toBeInTheDocument()
   })
+
+  it("shows IMAP providers before OAuth2 custom sign-in options", () => {
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    fireEvent.click(screen.getByRole("button", { name: /add account/i }))
+
+    const options = Array.from(screen.getByLabelText(/provider/i).querySelectorAll("option")).map((option) => option.textContent)
+
+    expect(options).toEqual([
+      "Gmail (IMAP direct)",
+      "Google Workspace (IMAP fallback)",
+      "Microsoft (IMAP fallback)",
+      "Yahoo (IMAP)",
+      "AOL (IMAP)",
+      "Other IMAP",
+      "Google (OAuth2 custom sign-in)",
+      "Microsoft (OAuth2 custom sign-in)",
+    ])
+  })
 })

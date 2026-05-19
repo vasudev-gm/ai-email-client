@@ -313,14 +313,14 @@ export default function AccountSwitcher() {
               onChange={(event) => handleProviderChange(event.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
             >
-              <option value="Google">Google (OAuth)</option>
-              <option value="GoogleIMAP">Google Workspace (IMAP fallback)</option>
               <option value="Gmail">Gmail (IMAP direct)</option>
-              <option value="Microsoft">Microsoft (OAuth)</option>
+              <option value="GoogleIMAP">Google Workspace (IMAP fallback)</option>
               <option value="MicrosoftIMAP">Microsoft (IMAP fallback)</option>
               <option value="Yahoo">Yahoo (IMAP)</option>
               <option value="AOL">AOL (IMAP)</option>
               <option value="IMAP">Other IMAP</option>
+              <option value="Google">Google (OAuth2 custom sign-in)</option>
+              <option value="Microsoft">Microsoft (OAuth2 custom sign-in)</option>
             </select>
             {requiresImapFields && (
               <fieldset className="space-y-2" aria-describedby={customImapSelected ? "custom-imap-help" : undefined}>
