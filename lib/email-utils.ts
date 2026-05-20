@@ -21,6 +21,8 @@ export interface EmailData {
   aiSummary?: string | null
   aiPriority?: number | null
   aiDraft?: string | null
+  blockedBlobImages?: boolean
+  blockedImageCount?: number
   labels?: { labelId: string; label: { name: string; color: string } }[]
 }
 
@@ -29,7 +31,7 @@ export function formatEmailDate(date: Date | string): string {
   const now = new Date()
   const diff = now.getTime() - d.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
+
   if (days === 0) {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   } else if (days === 1) {

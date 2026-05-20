@@ -116,6 +116,12 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
             />
           )}
 
+          {(email.blockedBlobImages || (email.blockedImageCount ?? 0) > 0) && (
+            <div className="mb-3 text-[10px] leading-4 inline-flex items-center px-2 py-1 rounded border border-amber-300/60 bg-amber-50/90 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
+              Some external images were blocked for performance/privacy
+            </div>
+          )}
+
           {/* Email body */}
           <div className="prose prose-sm max-w-none">
             {email.bodyHtml ? (

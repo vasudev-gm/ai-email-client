@@ -33,10 +33,14 @@ interface OutlookMessage {
 interface OutlookAttachment {
   id: string
   contentId?: string
+  contentLocation?: string
   contentType?: string
   contentBytes?: string
+  name?: string
   isInline?: boolean
 }
+
+const TRANSPARENT_PIXEL_DATA_URL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
 
 const DEFAULT_SELECT = [
   "id",
@@ -75,6 +79,7 @@ function isHtmlBody(message: OutlookMessage) {
 function normalizeCid(value?: string) {
   if (!value) return ""
   let normalized = value.trim().replace(/^cid:/i, "")
+  normalized = normalized.replace(/^['"]+|['"]+$/g, "")
   if (normalized.startsWith("<") && normalized.endsWith(">")) {
     normalized = normalized.slice(1, -1)
   }
@@ -87,10 +92,70 @@ function normalizeCid(value?: string) {
 }
 
 function replaceCidSources(html: string, cidToDataUrl: Map<string, string>) {
-  return html.replace(/cid:([^"')\s]+)/gi, (match, rawCid: string) => {
+  return html.replace(/cid:([^"')\s,]+)/gi, (match, rawCid: string) => {
     const key = normalizeCid(rawCid)
     return cidToDataUrl.get(key) || match
   })
+}
+
+function neutralizeUnresolvedCidSources(html: string) {
+  // Do not proxy unresolved CID URLs. Neutralizing them avoids request storms,
+  // repeated 404s, and browser memory churn on template-heavy emails.
+  return html.replace(/cid:([^"')\s,]+)/gi, TRANSPARENT_PIXEL_DATA_URL)
+}
+
+function isSafeInlineResourceUrl(url: string) {
+  const normalized = url.trim().toLowerCase()
+  if (normalized.startsWith("data:")) return true
+
+  // blob: URLs are document-scoped and cid: is not browser-loadable.
+  if (normalized.startsWith("blob:") || normalized.startsWith("cid:")) return false
+  if (normalized.startsWith("javascript:")) return false
+
+  // Allow common external image formats over HTTP(S).
+  if (!/^https?:\/\//i.test(url.trim())) return false
+
+  try {
+    const parsed = new URL(url)
+    const pathname = parsed.pathname.toLowerCase()
+    return /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(pathname)
+  } catch {
+    return false
+  }
+}
+
+function sanitizeEmailImageResources(html: string) {
+  let blockedBlobImages = false
+  let blockedImageCount = 0
+
+  // Remove srcset to avoid multiple parallel image fetches for one visual.
+  let normalized = html.replace(/\s+srcset\s*=\s*("[^"]*"|'[^']*')/gi, "")
+
+  // Ensure unsupported/proxy/remote image URLs do not trigger request bursts.
+  normalized = normalized.replace(/(<img\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'][^>]*>)/gi, (full, start, src, end) => {
+    if (/^blob:/i.test(src.trim())) {
+      blockedBlobImages = true
+    }
+    if (isSafeInlineResourceUrl(src)) return `${start}${src}${end}`
+    blockedImageCount += 1
+    return `${start}${TRANSPARENT_PIXEL_DATA_URL}${end}`
+  })
+
+  // Neutralize background-image URLs that can also trigger network requests.
+  normalized = normalized.replace(/url\((['"]?)([^)'"]+)\1\)/gi, (full, quote, url) => {
+    if (/^blob:/i.test(url.trim())) {
+      blockedBlobImages = true
+    }
+    if (isSafeInlineResourceUrl(url)) return full
+    blockedImageCount += 1
+    return `url(${TRANSPARENT_PIXEL_DATA_URL})`
+  })
+
+  return {
+    html: normalized,
+    blockedBlobImages: blockedBlobImages || blockedImageCount > 0,
+    blockedImageCount,
+  }
 }
 
 function stripDarkModeTemplateStyles(html: string) {
@@ -121,15 +186,17 @@ function stripDarkModeTemplateStyles(html: string) {
 async function fetchInlineAttachmentsBestEffort(config: OutlookConfig, messageId: string) {
   try {
     const encodedId = encodeURIComponent(messageId)
-    const listPath = `/me/messages/${encodedId}/attachments?$top=100&$select=${encodeURIComponent("id,contentId,contentType,contentBytes,isInline")}`
+    const listPath = `/me/messages/${encodedId}/attachments?$top=100&$select=${encodeURIComponent("id,contentId,contentLocation,contentType,contentBytes,name,isInline")}`
     const list = (await fetchGraph(config, listPath)) as { value?: OutlookAttachment[] }
-    const inlineItems = (list.value || []).filter((attachment) => attachment.isInline && attachment.contentId)
+    const inlineItems = (list.value || []).filter((attachment) =>
+      attachment.isInline || Boolean(attachment.contentId) || Boolean(attachment.contentLocation)
+    )
 
     const resolved = await Promise.all(
       inlineItems.map(async (attachment) => {
         if (attachment.contentBytes) return attachment
         try {
-          const detailPath = `/me/messages/${encodedId}/attachments/${encodeURIComponent(attachment.id)}?$select=${encodeURIComponent("id,contentId,contentType,contentBytes,isInline")}`
+          const detailPath = `/me/messages/${encodedId}/attachments/${encodeURIComponent(attachment.id)}?$select=${encodeURIComponent("id,contentId,contentLocation,contentType,contentBytes,name,isInline")}`
           const detail = (await fetchGraph(config, detailPath)) as OutlookAttachment
           return { ...attachment, ...detail }
         } catch {
@@ -138,7 +205,9 @@ async function fetchInlineAttachmentsBestEffort(config: OutlookConfig, messageId
       })
     )
 
-    return resolved.filter((attachment) => attachment.contentId && attachment.contentBytes)
+    return resolved.filter((attachment) =>
+      Boolean(attachment.contentId || attachment.contentLocation || attachment.name)
+    )
   } catch {
     return []
   }
@@ -163,7 +232,7 @@ async function resolveInlineCidImagesBestEffort(config: OutlookConfig, messageId
   return replaceCidSources(html, cidToDataUrl)
 }
 
-function toEmailData(message: OutlookMessage, folder: string) {
+function toEmailData(message: OutlookMessage, folder: string, options?: { blockedBlobImages?: boolean; blockedImageCount?: number }) {
   const normalizedFolder = folder.toUpperCase()
   const isDeleted = normalizedFolder === "DELETED"
   const isSent = normalizedFolder === "SENT"
@@ -191,6 +260,8 @@ function toEmailData(message: OutlookMessage, folder: string) {
     isSent,
     folder: normalizedFolder,
     aiPriority: null,
+    blockedBlobImages: options?.blockedBlobImages,
+    blockedImageCount: options?.blockedImageCount,
     labels: [],
   }
 }
@@ -244,7 +315,14 @@ export async function fetchOutlookEmailById(config: OutlookConfig, id: string) {
 
   if (isHtmlBody(data) && data.body?.content) {
     const htmlWithImages = await resolveInlineCidImagesBestEffort(config, id, data.body.content)
-    data.body.content = stripDarkModeTemplateStyles(htmlWithImages)
+    const htmlWithoutDarkTemplateRules = stripDarkModeTemplateStyles(htmlWithImages)
+    const htmlWithoutUnresolvedCid = neutralizeUnresolvedCidSources(htmlWithoutDarkTemplateRules)
+    const sanitized = sanitizeEmailImageResources(htmlWithoutUnresolvedCid)
+    data.body.content = sanitized.html
+    return toEmailData(data, "INBOX", {
+      blockedBlobImages: sanitized.blockedBlobImages,
+      blockedImageCount: sanitized.blockedImageCount,
+    })
   }
 
   return toEmailData(data, "INBOX")
