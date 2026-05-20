@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X, Wand2, Send } from "lucide-react"
 import { useEmailStore } from "@/store/emailStore"
 
@@ -18,19 +18,44 @@ interface ComposerProps {
     to: string
     subject: string
   }
+  draft?: {
+    to?: string
+    cc?: string
+    bcc?: string
+    subject?: string
+    content?: string
+  }
 }
 
-export default function Composer({ isOpen, onClose, onSend, replyTo }: ComposerProps) {
-  const [to, setTo] = useState(replyTo?.to || "")
+export default function Composer({ isOpen, onClose, onSend, replyTo, draft }: ComposerProps) {
+  const [to, setTo] = useState("")
   const [cc, setCc] = useState("")
   const [bcc, setBcc] = useState("")
-  const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : "")
+  const [subject, setSubject] = useState("")
   const [content, setContent] = useState("")
   const [showCc, setShowCc] = useState(false)
   const [sending, setSending] = useState(false)
   const [assisting, setAssisting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { localAIMode = "heuristic" } = useEmailStore()
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const initialTo = draft?.to ?? replyTo?.to ?? ""
+    const initialSubject = draft?.subject ?? (replyTo ? `Re: ${replyTo.subject}` : "")
+    const initialCc = draft?.cc ?? ""
+    const initialBcc = draft?.bcc ?? ""
+    const initialContent = draft?.content ?? ""
+
+    setTo(initialTo)
+    setCc(initialCc)
+    setBcc(initialBcc)
+    setSubject(initialSubject)
+    setContent(initialContent)
+    setShowCc(Boolean(initialCc || initialBcc))
+    setError(null)
+  }, [isOpen, draft, replyTo])
 
   if (!isOpen) return null
 

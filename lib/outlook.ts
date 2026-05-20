@@ -281,8 +281,17 @@ async function fetchGraph(config: OutlookConfig, path: string, init?: RequestIni
     throw new Error(`Graph request failed (${response.status}): ${body}`)
   }
 
-  if (response.status === 204) return null
-  return response.json()
+  if (response.status === 204 || response.status === 202) return null
+
+  const contentType = response.headers.get("content-type") || ""
+  const rawBody = await response.text()
+  if (!rawBody.trim()) return null
+
+  if (contentType.toLowerCase().includes("application/json")) {
+    return JSON.parse(rawBody)
+  }
+
+  return rawBody
 }
 
 function getFolderPath(folder: string) {

@@ -10,11 +10,12 @@ interface EmailViewerProps {
   email: EmailData
   onBack: () => void
   onReply: () => void
+  onForward: () => void
   onDelete: () => void
   onRestore: () => void
 }
 
-export default function EmailViewer({ email, onBack, onReply, onDelete, onRestore }: EmailViewerProps) {
+export default function EmailViewer({ email, onBack, onReply, onForward, onDelete, onRestore }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
 
@@ -150,7 +151,7 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
           Reply
         </button>
         <button
-          onClick={onReply}
+          onClick={onForward}
           className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
         >
           <Forward className="w-4 h-4" />

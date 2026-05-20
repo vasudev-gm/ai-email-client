@@ -60,4 +60,23 @@ describe("Composer", () => {
 
     expect(await screen.findByDisplayValue("AI generated draft body")).toBeInTheDocument()
   })
+
+  it("prefills compose fields from draft", () => {
+    render(
+      <Composer
+        isOpen={true}
+        onClose={() => {}}
+        onSend={async () => {}}
+        draft={{
+          to: "team@example.com",
+          subject: "Fwd: Weekly Update",
+          content: "Forwarded content",
+        }}
+      />
+    )
+
+    expect(screen.getByDisplayValue("team@example.com")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("Fwd: Weekly Update")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("Forwarded content")).toBeInTheDocument()
+  })
 })

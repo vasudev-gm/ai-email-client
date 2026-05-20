@@ -10,7 +10,7 @@ import SearchBar from "@/components/SearchBar"
 import AccountSwitcher from "@/components/AccountSwitcher"
 import ThemeToggle from "@/components/ThemeToggle"
 import { useEmailStore } from "@/store/emailStore"
-import { EmailData } from "@/lib/email-utils"
+import { EmailData, extractEmailAddress } from "@/lib/email-utils"
 import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
 import { toApiAccountId } from "@/lib/account-filter"
 import { PenSquare, Menu, LogOut, RefreshCw } from "lucide-react"
@@ -101,7 +101,18 @@ export default function Home() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncClockTick, setSyncClockTick] = useState(0)
+  const [composeDraft, setComposeDraft] = useState<{
+    to?: string
+    subject?: string
+    content?: string
+  } | null>(null)
   const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
+
+  const prefixSubject = useCallback((subject: string, prefix: "Re:" | "Fwd:") => {
+    const trimmed = subject.trim()
+    if (!trimmed) return `${prefix} (no subject)`
+    return trimmed.toLowerCase().startsWith(prefix.toLowerCase()) ? trimmed : `${prefix} ${trimmed}`
+  }, [])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -240,8 +251,54 @@ export default function Home() {
       throw new Error(message || `Failed to send email (status: ${response.status})`)
     }
     setIsComposeOpen(false)
+    setComposeDraft(null)
     void syncVisibleEmails()
   }
+
+  const handleReply = useCallback(() => {
+    if (!selectedEmail) {
+      setComposeDraft(null)
+      setIsComposeOpen(true)
+      return
+    }
+
+    const quotedBody = (selectedEmail.bodyText || "").trim()
+    const replyPrefix = `\n\nOn ${new Date(selectedEmail.date).toLocaleString()}, ${selectedEmail.from} wrote:\n`
+
+    setComposeDraft({
+      to: extractEmailAddress(selectedEmail.from),
+      subject: prefixSubject(selectedEmail.subject, "Re:"),
+      content: quotedBody ? `${replyPrefix}> ${quotedBody.split("\n").join("\n> ")}` : "",
+    })
+    setIsComposeOpen(true)
+  }, [selectedEmail, prefixSubject, setIsComposeOpen])
+
+  const handleForward = useCallback(() => {
+    if (!selectedEmail) {
+      setComposeDraft(null)
+      setIsComposeOpen(true)
+      return
+    }
+
+    const originalBody = (selectedEmail.bodyText || "").trim()
+    const forwardedHeader = [
+      "",
+      "",
+      "---------- Forwarded message ----------",
+      `From: ${selectedEmail.from}`,
+      `Date: ${new Date(selectedEmail.date).toLocaleString()}`,
+      `Subject: ${selectedEmail.subject}`,
+      `To: ${selectedEmail.to}`,
+      "",
+    ].join("\n")
+
+    setComposeDraft({
+      to: "",
+      subject: prefixSubject(selectedEmail.subject, "Fwd:"),
+      content: `${forwardedHeader}${originalBody}`,
+    })
+    setIsComposeOpen(true)
+  }, [selectedEmail, prefixSubject, setIsComposeOpen])
 
   const handleBulkAction = useCallback(async (
     ids: string[],
@@ -393,7 +450,10 @@ export default function Home() {
               <LogOut className="w-4 h-4" />
             </button>
            <button
-             onClick={() => setIsComposeOpen(true)}
+             onClick={() => {
+               setComposeDraft(null)
+               setIsComposeOpen(true)
+             }}
              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
             <PenSquare className="w-4 h-4" />
@@ -427,7 +487,8 @@ export default function Home() {
                 <EmailViewer
                   email={selectedEmail}
                   onBack={() => setSelectedEmailId(null)}
-                  onReply={() => setIsComposeOpen(true)}
+                  onReply={handleReply}
+                  onForward={handleForward}
                   onDelete={handleDeleteEmail}
                   onRestore={handleRestoreEmail}
                 />
@@ -445,8 +506,12 @@ export default function Home() {
       {/* Composer */}
       <Composer
         isOpen={isComposeOpen}
-        onClose={() => setIsComposeOpen(false)}
+        onClose={() => {
+          setIsComposeOpen(false)
+          setComposeDraft(null)
+        }}
         onSend={handleSendEmail}
+        draft={composeDraft || undefined}
       />
     </div>
   )
