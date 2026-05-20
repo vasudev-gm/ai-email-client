@@ -105,10 +105,10 @@ export default function EmailList({
 
   if (emails.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-400">
         <div className="text-4xl mb-3">📭</div>
         <p className="font-medium text-gray-600 dark:text-gray-300">No emails found</p>
-        <p className="text-sm mt-1">Your folder is empty</p>
+        <p className="text-sm mt-1 text-gray-500 dark:text-gray-300">Your folder is empty</p>
       </div>
     )
   }
@@ -120,7 +120,7 @@ export default function EmailList({
           <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
           Select all
         </label>
-        <div className="text-xs text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
+        <div className="text-xs text-gray-500 dark:text-gray-300" role="status" aria-live="polite">
           {selectedIds.length > 0 ? `${selectedIds.length} selected` : "No selection"}
         </div>
       </div>
@@ -256,7 +256,7 @@ export default function EmailList({
                   {priorityLabels[email.aiPriority]}
                 </span>
               )}
-              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+              <span className="text-xs text-gray-400 dark:text-gray-300 whitespace-nowrap">
                 {formatEmailDate(email.date)}
               </span>
             </div>
@@ -264,7 +264,7 @@ export default function EmailList({
           <p className={`text-sm truncate mb-1 ${!email.isRead ? "font-medium text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
             {email.subject}
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+          <p className="text-xs text-gray-400 dark:text-gray-300 truncate">
             {truncateText(email.bodyText || "", 80)}
           </p>
         </button>

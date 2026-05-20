@@ -350,7 +350,7 @@ export default function Home() {
            <div className="flex-1 min-w-0">
              <SearchBar />
              <div className="mt-1 px-1 flex items-center gap-2">
-               <p className="text-xs text-gray-500 dark:text-gray-400">{lastSyncedLabel}</p>
+               <p className="text-xs text-gray-500 dark:text-gray-300">{lastSyncedLabel}</p>
                <button
                  type="button"
                  onClick={() => void handleManualSync()}
@@ -432,10 +432,10 @@ export default function Home() {
                   onRestore={handleRestoreEmail}
                 />
             ) : (
-              <div className="text-center text-gray-400 dark:text-gray-500">
+              <div className="text-center text-gray-400 dark:text-gray-400">
                 <div className="text-6xl mb-4">✉️</div>
                 <p className="text-lg font-medium text-gray-600 dark:text-gray-300">Select an email to read</p>
-                <p className="text-sm mt-1">Choose from your {currentFolder.toLowerCase()} on the left</p>
+                <p className="text-sm mt-1 text-gray-500 dark:text-gray-300">Choose from your {currentFolder.toLowerCase()} on the left</p>
               </div>
             )}
           </div>

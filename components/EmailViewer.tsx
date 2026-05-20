@@ -87,11 +87,11 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
               </div>
               <div>
                 <p className="font-semibold text-gray-900 dark:text-gray-100">{extractDisplayName(email.from)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{extractEmailAddress(email.from)}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">To: {email.to}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-300">{extractEmailAddress(email.from)}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-400">To: {email.to}</p>
               </div>
             </div>
-            <div className="text-right text-sm text-gray-400 dark:text-gray-500 flex-shrink-0">
+            <div className="text-right text-sm text-gray-400 dark:text-gray-400 flex-shrink-0">
               <p>{date.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
               <p>{date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
             </div>
@@ -121,7 +121,7 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
             {email.bodyHtml ? (
               <div
                 dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
-                className="text-gray-700 dark:text-gray-200 leading-relaxed"
+                className="email-html text-gray-700 dark:text-gray-200 leading-relaxed"
               />
             ) : (
               <pre className="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-200 leading-relaxed">
