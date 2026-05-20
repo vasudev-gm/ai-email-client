@@ -26,15 +26,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-.dark .email-html {
-  color: #e5e7eb;
-}
-
-.dark .email-html * {
-  color: inherit !important;
-  border-color: #374151 !important;
-}
-
-.dark .email-html a {
-  color: #93c5fd !important;
+.dark .email-html-surface {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  overflow-x: auto;
 }

@@ -30,6 +30,14 @@ interface OutlookMessage {
   }
 }
 
+interface OutlookAttachment {
+  id: string
+  contentId?: string
+  contentType?: string
+  contentBytes?: string
+  isInline?: boolean
+}
+
 const DEFAULT_SELECT = [
   "id",
   "internetMessageId",
@@ -62,6 +70,97 @@ function formatRecipientList(recipients: OutlookRecipient[] = []) {
 
 function isHtmlBody(message: OutlookMessage) {
   return message.body?.contentType?.toLowerCase() === "html"
+}
+
+function normalizeCid(value?: string) {
+  if (!value) return ""
+  let normalized = value.trim().replace(/^cid:/i, "")
+  if (normalized.startsWith("<") && normalized.endsWith(">")) {
+    normalized = normalized.slice(1, -1)
+  }
+  try {
+    normalized = decodeURIComponent(normalized)
+  } catch {
+    // Keep original value when CID cannot be URI-decoded.
+  }
+  return normalized.toLowerCase()
+}
+
+function replaceCidSources(html: string, cidToDataUrl: Map<string, string>) {
+  return html.replace(/cid:([^"')\s]+)/gi, (match, rawCid: string) => {
+    const key = normalizeCid(rawCid)
+    return cidToDataUrl.get(key) || match
+  })
+}
+
+function stripDarkModeTemplateStyles(html: string) {
+  // Many transactional templates embed dark-mode CSS that flips text colors
+  // without fully updating background blocks, causing unreadable sections.
+  let normalized = html.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (styleBlock) => {
+    if (!/prefers-color-scheme\s*:\s*dark/i.test(styleBlock) && !/\[data-ogsc\]/i.test(styleBlock)) {
+      return styleBlock
+    }
+
+    const withoutDarkMedia = styleBlock.replace(
+      /@media[^{}]*prefers-color-scheme\s*:\s*dark[^{}]*\{[\s\S]*?\n\s*\}/gi,
+      ""
+    )
+    const withoutOgsc = withoutDarkMedia.replace(/[^{}]*\[data-ogsc\][^{}]*\{[^{}]*\}/gi, "")
+
+    // If the style block only contained dark-mode rules, drop it.
+    return withoutOgsc.trim() === "" || /^<style\b[^>]*>\s*<\/style>$/i.test(withoutOgsc)
+      ? ""
+      : withoutOgsc
+  })
+
+  normalized = normalized.replace(/\sdata-ogsc(?:="[^"]*")?/gi, "")
+
+  return normalized
+}
+
+async function fetchInlineAttachmentsBestEffort(config: OutlookConfig, messageId: string) {
+  try {
+    const encodedId = encodeURIComponent(messageId)
+    const listPath = `/me/messages/${encodedId}/attachments?$top=100&$select=${encodeURIComponent("id,contentId,contentType,contentBytes,isInline")}`
+    const list = (await fetchGraph(config, listPath)) as { value?: OutlookAttachment[] }
+    const inlineItems = (list.value || []).filter((attachment) => attachment.isInline && attachment.contentId)
+
+    const resolved = await Promise.all(
+      inlineItems.map(async (attachment) => {
+        if (attachment.contentBytes) return attachment
+        try {
+          const detailPath = `/me/messages/${encodedId}/attachments/${encodeURIComponent(attachment.id)}?$select=${encodeURIComponent("id,contentId,contentType,contentBytes,isInline")}`
+          const detail = (await fetchGraph(config, detailPath)) as OutlookAttachment
+          return { ...attachment, ...detail }
+        } catch {
+          return attachment
+        }
+      })
+    )
+
+    return resolved.filter((attachment) => attachment.contentId && attachment.contentBytes)
+  } catch {
+    return []
+  }
+}
+
+async function resolveInlineCidImagesBestEffort(config: OutlookConfig, messageId: string, html: string) {
+  if (!/cid:/i.test(html)) return html
+
+  const inlineAttachments = await fetchInlineAttachmentsBestEffort(config, messageId)
+  if (inlineAttachments.length === 0) return html
+
+  const cidToDataUrl = new Map<string, string>()
+  for (const attachment of inlineAttachments) {
+    if (!attachment.contentId || !attachment.contentBytes) continue
+    const key = normalizeCid(attachment.contentId)
+    if (!key) continue
+    const type = attachment.contentType || "application/octet-stream"
+    cidToDataUrl.set(key, `data:${type};base64,${attachment.contentBytes}`)
+  }
+
+  if (cidToDataUrl.size === 0) return html
+  return replaceCidSources(html, cidToDataUrl)
 }
 
 function toEmailData(message: OutlookMessage, folder: string) {
@@ -142,6 +241,12 @@ export async function fetchOutlookEmailById(config: OutlookConfig, id: string) {
     config,
     `/me/messages/${encodeURIComponent(id)}?$select=${encodeURIComponent(DEFAULT_SELECT)}`
   )) as OutlookMessage
+
+  if (isHtmlBody(data) && data.body?.content) {
+    const htmlWithImages = await resolveInlineCidImagesBestEffort(config, id, data.body.content)
+    data.body.content = stripDarkModeTemplateStyles(htmlWithImages)
+  }
+
   return toEmailData(data, "INBOX")
 }
 

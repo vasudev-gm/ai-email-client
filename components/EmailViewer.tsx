@@ -119,10 +119,12 @@ export default function EmailViewer({ email, onBack, onReply, onDelete, onRestor
           {/* Email body */}
           <div className="prose prose-sm max-w-none">
             {email.bodyHtml ? (
-              <div
-                dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
-                className="email-html text-gray-700 dark:text-gray-200 leading-relaxed"
-              />
+              <div className="email-html-surface dark:shadow-sm">
+                <div
+                  dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
+                  className="email-html text-gray-700 leading-relaxed"
+                />
+              </div>
             ) : (
               <pre className="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-200 leading-relaxed">
                 {email.bodyText}
