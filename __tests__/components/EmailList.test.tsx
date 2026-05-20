@@ -62,4 +62,40 @@ describe("EmailList", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: /mark all read/i }))
     expect(onBulkAction).toHaveBeenCalledWith(["1"], "markRead")
   })
+
+  it("shows unarchive in archived folder and dispatches unarchive action", () => {
+    const onBulkAction = jest.fn()
+    render(
+      <EmailList
+        emails={MOCK_EMAILS.slice(0, 2)}
+        currentFolder="ARCHIVED"
+        selectedEmailId={null}
+        onSelectEmail={() => {}}
+        onBulkAction={onBulkAction}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/select all/i))
+    fireEvent.click(screen.getByRole("button", { name: /^unarchive$/i }))
+
+    expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "unarchive")
+  })
+
+  it("shows delete action and dispatches delete for selected emails", () => {
+    const onBulkAction = jest.fn()
+    render(
+      <EmailList
+        emails={MOCK_EMAILS.slice(0, 2)}
+        currentFolder="DELETED"
+        selectedEmailId={null}
+        onSelectEmail={() => {}}
+        onBulkAction={onBulkAction}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/select all/i))
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }))
+
+    expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "delete")
+  })
 })

@@ -171,6 +171,13 @@ export async function deleteOutlookEmail(config: OutlookConfig, id: string) {
   })
 }
 
+export async function moveOutlookEmail(config: OutlookConfig, id: string, destinationId: "archive" | "inbox") {
+  await fetchGraph(config, `/me/messages/${encodeURIComponent(id)}/move`, {
+    method: "POST",
+    body: JSON.stringify({ destinationId }),
+  })
+}
+
 export async function sendOutlookEmail(config: OutlookConfig, options: {
   to: string
   cc?: string

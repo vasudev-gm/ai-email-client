@@ -1,23 +1,30 @@
 "use client"
 
 import { useEmailStore } from "@/store/emailStore"
-import { 
+import {
   Inbox, Star, Send, FileText, Archive, Trash2, Settings, X
 } from "lucide-react"
 
 interface SidebarProps {
   inboxUnreadCount: number
-  deletedCount: number
+  folderCounts: {
+    INBOX: number
+    STARRED: number
+    SENT: number
+    DRAFTS: number
+    ARCHIVED: number
+    DELETED: number
+  }
 }
 
-export default function Sidebar({ inboxUnreadCount, deletedCount }: SidebarProps) {
+export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps) {
   const folders = [
     { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount },
-    { id: "STARRED", label: "Starred", icon: Star },
-    { id: "SENT", label: "Sent", icon: Send },
-    { id: "DRAFTS", label: "Drafts", icon: FileText },
-    { id: "ARCHIVED", label: "Archived", icon: Archive },
-    { id: "DELETED", label: "Deleted", icon: Trash2, count: deletedCount > 0 ? deletedCount : undefined },
+    { id: "STARRED", label: "Starred", icon: Star, count: folderCounts.STARRED > 0 ? folderCounts.STARRED : undefined },
+    { id: "SENT", label: "Sent", icon: Send, count: folderCounts.SENT > 0 ? folderCounts.SENT : undefined },
+    { id: "DRAFTS", label: "Drafts", icon: FileText, count: folderCounts.DRAFTS > 0 ? folderCounts.DRAFTS : undefined },
+    { id: "ARCHIVED", label: "Archived", icon: Archive, count: folderCounts.ARCHIVED > 0 ? folderCounts.ARCHIVED : undefined },
+    { id: "DELETED", label: "Deleted", icon: Trash2, count: folderCounts.DELETED > 0 ? folderCounts.DELETED : undefined },
   ]
 
   const { currentFolder, setCurrentFolder, setIsSidebarOpen } = useEmailStore()

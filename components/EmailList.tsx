@@ -11,7 +11,7 @@ interface EmailListProps {
   onSelectEmail: (id: string) => void
   onBulkAction?: (
     ids: string[],
-    action: "archive" | "star" | "markRead" | "markUnread" | "restore"
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore"
   ) => Promise<void> | void
   loading?: boolean
 }
@@ -74,7 +74,7 @@ export default function EmailList({
   }, [])
 
   const runBulkAction = (
-    action: "archive" | "star" | "markRead" | "markUnread" | "restore",
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore",
     ids = selectedIds
   ) => {
     if (!ids.length || !onBulkAction) return
@@ -133,12 +133,30 @@ export default function EmailList({
           >
             Star
           </button>
+          {currentFolder !== "ARCHIVED" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("archive")}
+              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 disabled:opacity-40"
+            >
+              Archive
+            </button>
+          )}
+          {currentFolder === "ARCHIVED" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("unarchive")}
+              className="text-xs px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 disabled:opacity-40"
+            >
+              Unarchive
+            </button>
+          )}
           <button
             disabled={selectedIds.length === 0}
-            onClick={() => runBulkAction("archive")}
-            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 disabled:opacity-40"
+            onClick={() => runBulkAction("delete")}
+            className="text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 disabled:opacity-40"
           >
-            Archive
+            Delete
           </button>
           {currentFolder === "DELETED" && (
             <button

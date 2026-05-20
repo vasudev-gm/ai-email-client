@@ -28,7 +28,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ emails, total: emails.length, source: "outlook" })
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error"
-      console.warn("Outlook email fetch failed; falling back to mock emails", { message })
+      return NextResponse.json(
+        { error: `Outlook fetch failed: ${message}`, source: "outlook" },
+        { status: 502 }
+      )
     }
   }
 

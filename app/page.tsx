@@ -13,7 +13,21 @@ import { useEmailStore } from "@/store/emailStore"
 import { EmailData } from "@/lib/email-utils"
 import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
 import { toApiAccountId } from "@/lib/account-filter"
-import { PenSquare, Menu, LogOut } from "lucide-react"
+import { PenSquare, Menu, LogOut, RefreshCw } from "lucide-react"
+
+type FolderId = "INBOX" | "STARRED" | "SENT" | "DRAFTS" | "ARCHIVED" | "DELETED"
+type FolderCountMap = Record<FolderId, number>
+
+const FOLDERS: FolderId[] = ["INBOX", "STARRED", "SENT", "DRAFTS", "ARCHIVED", "DELETED"]
+
+const EMPTY_COUNTS: FolderCountMap = {
+  INBOX: 0,
+  STARRED: 0,
+  SENT: 0,
+  DRAFTS: 0,
+  ARCHIVED: 0,
+  DELETED: 0,
+}
 
 function getAccountQuery(selectedAccountId: string | null) {
   const apiAccountId = toApiAccountId(selectedAccountId)
@@ -22,14 +36,34 @@ function getAccountQuery(selectedAccountId: string | null) {
 
 async function fetchFolderCounts(selectedAccountId: string | null) {
   const accountQuery = getAccountQuery(selectedAccountId)
-  const [inboxRes, deletedRes] = await Promise.all([
-    fetch(`/api/emails?folder=INBOX${accountQuery}`),
-    fetch(`/api/emails?folder=DELETED${accountQuery}`),
-  ])
-  const [inboxData, deletedData] = await Promise.all([inboxRes.json(), deletedRes.json()])
+  const responses = await Promise.all(
+    FOLDERS.map((folder) => fetch(`/api/emails?folder=${folder}${accountQuery}`))
+  )
+  const payloads = await Promise.all(responses.map((response) => response.json()))
+  const folderEmails = FOLDERS.reduce<Record<FolderId, EmailData[]>>((acc, folder, index) => {
+    acc[folder] = payloads[index]?.emails || []
+    return acc
+  }, {
+    INBOX: [],
+    STARRED: [],
+    SENT: [],
+    DRAFTS: [],
+    ARCHIVED: [],
+    DELETED: [],
+  })
+
+  const inboxUnreadCount = folderEmails.INBOX.filter((email) => !email.isRead).length
+
   return {
-    inboxUnreadCount: (inboxData.emails || []).filter((email: EmailData) => !email.isRead).length,
-    deletedCount: (deletedData.emails || []).length,
+    inboxUnreadCount,
+    folderCounts: {
+      INBOX: inboxUnreadCount,
+      STARRED: folderEmails.STARRED.length,
+      SENT: folderEmails.SENT.length,
+      DRAFTS: folderEmails.DRAFTS.length,
+      ARCHIVED: folderEmails.ARCHIVED.length,
+      DELETED: folderEmails.DELETED.length,
+    } as FolderCountMap,
   }
 }
 
@@ -62,7 +96,11 @@ export default function Home() {
   const [selectedEmail, setSelectedEmail] = useState<EmailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
-  const [deletedCount, setDeletedCount] = useState(0)
+  const [folderCounts, setFolderCounts] = useState<FolderCountMap>(EMPTY_COUNTS)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [syncClockTick, setSyncClockTick] = useState(0)
   const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
 
   useEffect(() => {
@@ -75,32 +113,66 @@ export default function Home() {
     if (!isAuthenticated) return
     const counts = await fetchFolderCounts(selectedAccountId)
     setInboxUnreadCount(counts.inboxUnreadCount)
-    setDeletedCount(counts.deletedCount)
+    setFolderCounts(counts.folderCounts)
   }, [selectedAccountId, isAuthenticated])
 
-  useEffect(() => {
-    let isCancelled = false
-    const fetchEmails = async () => {
-      if (!isAuthenticated) return
-      setLoading(true)
+  const syncVisibleEmails = useCallback(async (withLoading = false, syncAllFolders = false) => {
+    if (!isAuthenticated) return
+    if (withLoading) setLoading(true)
 
-      try {
-        const visibleEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
-        if (!isCancelled) {
-          setEmails(visibleEmails)
-          void refreshFolderCounts()
-        }
-      } finally {
-        if (!isCancelled) {
-          setLoading(false)
-        }
-      }
-    }
-    void fetchEmails()
-    return () => {
-      isCancelled = true
+    try {
+      const [visibleEmails] = await Promise.all([
+        fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId),
+        syncAllFolders ? refreshFolderCounts() : Promise.resolve(),
+      ])
+      setEmails(visibleEmails)
+      setLastSyncedAt(new Date())
+      setSyncError(null)
+    } finally {
+      if (withLoading) setLoading(false)
     }
   }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, isAuthenticated])
+
+  const lastSyncedLabel = (() => {
+    void syncClockTick
+    if (!lastSyncedAt) return "Last synced: pending"
+    const secondsAgo = Math.max(0, Math.floor((Date.now() - lastSyncedAt.getTime()) / 1000))
+    if (secondsAgo < 5) return "Synced just now"
+    if (secondsAgo < 60) return `Synced ${secondsAgo}s ago`
+    const minutesAgo = Math.floor(secondsAgo / 60)
+    if (minutesAgo < 60) return `Synced ${minutesAgo}m ago`
+    const hoursAgo = Math.floor(minutesAgo / 60)
+    return `Synced ${hoursAgo}h ago`
+  })()
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setSyncClockTick((tick) => tick + 1)
+    }, 1000)
+    return () => window.clearInterval(intervalId)
+  }, [])
+
+  useEffect(() => {
+    const fetchEmails = async () => {
+      if (!isAuthenticated) return
+      await syncVisibleEmails(true, true)
+    }
+    void fetchEmails()
+  }, [syncVisibleEmails, isAuthenticated])
+
+  const handleManualSync = useCallback(async () => {
+    if (isSyncing) return
+    setIsSyncing(true)
+    try {
+      await syncVisibleEmails(false, true)
+      setSyncError(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown sync error"
+      setSyncError(message)
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [isSyncing, syncVisibleEmails])
 
   useEffect(() => {
     let isCancelled = false
@@ -158,20 +230,27 @@ export default function Home() {
     subject: string
     content: string
   }) => {
-    await fetch("/api/compose", {
+    const response = await fetch("/api/compose", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || `Failed to send email (status: ${response.status})`)
+    }
     setIsComposeOpen(false)
+    void syncVisibleEmails()
   }
 
   const handleBulkAction = useCallback(async (
     ids: string[],
-    action: "archive" | "star" | "markRead" | "markUnread" | "restore"
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore"
   ) => {
     const actionPayloadMap: Record<typeof action, Record<string, boolean>> = {
       archive: { isArchived: true },
+      unarchive: { isArchived: false },
+      delete: { isDeleted: true },
       star: { isStarred: true },
       markRead: { isRead: true },
       markUnread: { isRead: false },
@@ -255,7 +334,7 @@ export default function Home() {
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        <Sidebar inboxUnreadCount={inboxUnreadCount} deletedCount={deletedCount} />
+        <Sidebar inboxUnreadCount={inboxUnreadCount} folderCounts={folderCounts} />
       </div>
 
       {/* Main content */}
@@ -268,8 +347,33 @@ export default function Home() {
           >
             <Menu className="w-5 h-5" />
           </button>
-           <div className="flex-1">
+           <div className="flex-1 min-w-0">
              <SearchBar />
+             <div className="mt-1 px-1 flex items-center gap-2">
+               <p className="text-xs text-gray-500 dark:text-gray-400">{lastSyncedLabel}</p>
+               <button
+                 type="button"
+                 onClick={() => void handleManualSync()}
+                 disabled={isSyncing}
+                 className="text-xs px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 inline-flex items-center gap-1"
+                 aria-label="Sync inbox"
+               >
+                 <RefreshCw className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`} />
+                 {isSyncing ? "Syncing" : "Sync"}
+               </button>
+               {syncError ? (
+                   <button
+                     type="button"
+                     onClick={() => void handleManualSync()}
+                     disabled={isSyncing}
+                     className="text-xs text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+                     role="status"
+                     aria-live="polite"
+                   >
+                     Sync failed. Retry
+                   </button>
+               ) : null}
+             </div>
            </div>
             <ThemeToggle />
             <AccountSwitcher />

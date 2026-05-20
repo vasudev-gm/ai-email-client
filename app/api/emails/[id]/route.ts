@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { MOCK_EMAILS } from "@/lib/email-utils"
 import { auth } from "@/lib/auth"
-import { deleteOutlookEmail, fetchOutlookEmailById, patchOutlookEmail } from "@/lib/outlook"
+import { deleteOutlookEmail, fetchOutlookEmailById, moveOutlookEmail, patchOutlookEmail } from "@/lib/outlook"
 
 export async function GET(
   request: Request,
@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json(email)
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error"
-      console.warn("Outlook single email fetch failed; falling back to mock email", { message })
+      return NextResponse.json({ error: `Outlook email fetch failed: ${message}` }, { status: 502 })
     }
   }
 
@@ -46,6 +46,15 @@ export async function PATCH(
           isStarred: typeof body.isStarred === "boolean" ? body.isStarred : undefined,
         }
       )
+      if (typeof body.isArchived === "boolean" && body.isArchived) {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "archive")
+      }
+      if (typeof body.isArchived === "boolean" && !body.isArchived) {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "inbox")
+      }
+      if (typeof body.isDeleted === "boolean" && !body.isDeleted) {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "inbox")
+      }
       if (typeof body.isDeleted === "boolean" && body.isDeleted) {
         await deleteOutlookEmail({ accessToken: session.accessToken }, id)
       }
