@@ -174,10 +174,35 @@ export async function deleteOutlookEmail(config: OutlookConfig, id: string) {
 export async function sendOutlookEmail(config: OutlookConfig, options: {
   to: string
   cc?: string
+  bcc?: string
   subject: string
   body: string
 }) {
-  void config
-  void options
+  const parseRecipients = (value?: string) =>
+    (value || "")
+      .split(/[;,]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((address) => ({ emailAddress: { address } }))
+
+  const payload = {
+    message: {
+      subject: options.subject,
+      body: {
+        contentType: "Text",
+        content: options.body,
+      },
+      toRecipients: parseRecipients(options.to),
+      ccRecipients: parseRecipients(options.cc),
+      bccRecipients: parseRecipients(options.bcc),
+    },
+    saveToSentItems: true,
+  }
+
+  await fetchGraph(config, "/me/sendMail", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+
   return { success: true, messageId: `outlook_${Date.now()}` }
 }
