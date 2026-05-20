@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
 import EmailList from "@/components/EmailList"
@@ -46,7 +45,6 @@ async function fetchVisibleEmails(folder: string, searchQuery: string, selectedA
 }
 
 export default function Home() {
-  const router = useRouter()
   const { data: session, status } = useSession()
   const {
     selectedEmailId,
@@ -69,9 +67,9 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login")
+      window.location.replace("/login")
     }
-  }, [status, router])
+  }, [status])
 
   const refreshFolderCounts = useCallback(async () => {
     if (!isAuthenticated) return
@@ -282,7 +280,7 @@ export default function Home() {
                   await signOut({ callbackUrl: "/login" })
                 } catch (error) {
                   console.error("Sign out failed:", error)
-                  router.replace("/login")
+                  window.location.replace("/login")
                 }
               }}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"

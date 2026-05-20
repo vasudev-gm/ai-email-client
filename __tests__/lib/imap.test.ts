@@ -10,7 +10,7 @@ describe("verifyImapConnection", () => {
     jest.clearAllMocks()
   })
 
-  it("connects and opens mailbox with secure defaults", async () => {
+  it("connects with secure defaults", async () => {
     const connect = jest.fn().mockResolvedValue(undefined)
     const mailboxOpen = jest.fn().mockResolvedValue(undefined)
     const logout = jest.fn().mockResolvedValue(undefined)
@@ -43,7 +43,7 @@ describe("verifyImapConnection", () => {
       })
     )
     expect(connect).toHaveBeenCalled()
-    expect(mailboxOpen).toHaveBeenCalledWith("INBOX")
+    expect(mailboxOpen).not.toHaveBeenCalled()
     expect(logout).toHaveBeenCalled()
   })
 

@@ -12,6 +12,7 @@ describe("auth config", () => {
       GOOGLE_CLIENT_SECRET: "gsecret",
       MICROSOFT_CLIENT_ID: "mid",
       MICROSOFT_CLIENT_SECRET: "msecret",
+      NODE_ENV: "production",
     })
     expect(providers).toEqual(["google", "microsoft-entra-id"])
   })

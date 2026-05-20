@@ -45,7 +45,7 @@ function assertValidImapConfig(config: ImapConfig) {
   }
 }
 
-export async function verifyImapConnection(config: ImapConfig, folder = "INBOX") {
+export async function verifyImapConnection(config: ImapConfig, folder?: string) {
   assertValidImapConfig(config)
   const endpoint = normalizeImapEndpoint(config.host, config.port)
   const client = new ImapFlow({
@@ -63,8 +63,13 @@ export async function verifyImapConnection(config: ImapConfig, folder = "INBOX")
   })
 
   try {
+    // Connection success is enough to validate credentials for sign-in.
+    // Some providers/locales can reject mailboxOpen("INBOX") even with valid auth.
     await client.connect()
-    await client.mailboxOpen(folder)
+
+    if (folder) {
+      await client.mailboxOpen(folder)
+    }
   } finally {
     try {
       await client.logout()

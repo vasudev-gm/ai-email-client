@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { useEffect, useMemo, useState } from "react"
+import { getProviders, signIn } from "next-auth/react"
+
+const MICROSOFT_EMAIL_DOMAINS = ["outlook.com", "hotmail.com", "live.com", "msn.com"]
 
 function suggestSmtpHostFromEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase()
@@ -18,6 +20,38 @@ function suggestSmtpHostFromEmail(email: string) {
   return ""
 }
 
+function getDomainFromEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail.includes("@")) return ""
+  return normalizedEmail.split("@")[1] ?? ""
+}
+
+function getImapSignInErrorMessage(email: string, code?: string | null) {
+  const domain = getDomainFromEmail(email)
+
+  if (code !== "CredentialsSignin") {
+    return "Couldn't connect via IMAP. Check your credentials and IMAP settings, then try again."
+  }
+
+  if (domain === "gmail.com") {
+    return "Couldn't connect via IMAP. For Gmail, use an app password and IMAP host imap.gmail.com on port 993."
+  }
+
+  if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) {
+    return "Couldn't connect via IMAP. For Microsoft accounts, use an app password with IMAP host outlook.office365.com on port 993, or sign in with OAuth2."
+  }
+
+  if (["yahoo.com", "yahoo.co.uk", "aol.com"].includes(domain)) {
+    return "Couldn't connect via IMAP. Yahoo/AOL usually require an app password for IMAP sign-in."
+  }
+
+  if (code === "CredentialsSignin") {
+    return "Couldn't connect via IMAP. Verify host/port, and use an app password if your provider requires it."
+  }
+
+  return "Couldn't connect via IMAP. Check your credentials and IMAP settings, then try again."
+}
+
 export default function LoginPage() {
   const [showOauth, setShowOauth] = useState(false)
   const [imapForm, setImapForm] = useState({
@@ -28,15 +62,68 @@ export default function LoginPage() {
   })
   const [loading, setLoading] = useState(false)
   const [demoLoading, setDemoLoading] = useState(false)
+  const [imapError, setImapError] = useState("")
+  const [enabledOauthProviders, setEnabledOauthProviders] = useState({
+    google: false,
+    microsoft: false,
+  })
+
+  useEffect(() => {
+    let active = true
+
+    async function loadProviders() {
+      try {
+        const providers = await getProviders()
+        if (!active) return
+
+        setEnabledOauthProviders({
+          google: Boolean(providers?.google),
+          microsoft: Boolean(providers?.["microsoft-entra-id"]),
+        })
+      } catch {
+        if (!active) return
+        setEnabledOauthProviders({ google: false, microsoft: false })
+      }
+    }
+
+    void loadProviders()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const emailDomain = useMemo(() => getDomainFromEmail(imapForm.email), [imapForm.email])
+  const isMicrosoftAddress = MICROSOFT_EMAIL_DOMAINS.includes(emailDomain)
+  const hasAnyOauthProvider = enabledOauthProviders.google || enabledOauthProviders.microsoft
+  const shouldBlockMicrosoftImap = isMicrosoftAddress && enabledOauthProviders.microsoft
 
   const handleImapSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    setImapError("")
+
+    if (shouldBlockMicrosoftImap) {
+      setShowOauth(true)
+      setImapError("For Microsoft accounts, use OAuth2 sign-in instead of IMAP password login.")
+      return
+    }
+
     setLoading(true)
-    await signIn("credentials", {
-      ...imapForm,
-      callbackUrl: "/",
-    })
-    setLoading(false)
+    try {
+      const result = await signIn("credentials", {
+        ...imapForm,
+        callbackUrl: "/",
+        redirect: false,
+      })
+
+      if (result?.ok) {
+        window.location.href = result.url ?? "/"
+        return
+      }
+
+      setImapError(getImapSignInErrorMessage(imapForm.email, result?.error))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleDemoSignIn = async () => {
@@ -154,11 +241,26 @@ export default function LoginPage() {
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || shouldBlockMicrosoftImap}
               className="w-full bg-blue-600 text-white rounded-lg px-4 py-2.5 font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {loading ? "Connecting..." : "Connect via IMAP/SMTP"}
+              {loading ? "Connecting..." : shouldBlockMicrosoftImap ? "Use Microsoft OAuth2 Below" : "Connect via IMAP/SMTP"}
             </button>
+            {isMicrosoftAddress && enabledOauthProviders.microsoft ? (
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                For Microsoft accounts, OAuth2 sign-in below is usually more reliable than IMAP passwords.
+              </p>
+            ) : null}
+            {isMicrosoftAddress && !enabledOauthProviders.microsoft ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Microsoft OAuth2 isn&apos;t configured yet. Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to enable it.
+              </p>
+            ) : null}
+            {imapError ? (
+              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                {imapError}
+              </p>
+            ) : null}
           </form>
 
           <button
@@ -171,33 +273,43 @@ export default function LoginPage() {
 
           {showOauth && (
             <>
-              <button
-                type="button"
-                onClick={() => signIn("google", { callbackUrl: "/" })}
-                className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-slate-700 rounded-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-gray-700 dark:text-gray-200"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Continue with Google
-              </button>
+              {enabledOauthProviders.google ? (
+                <button
+                  type="button"
+                  onClick={() => signIn("google", { callbackUrl: "/" })}
+                  className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-slate-700 rounded-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-gray-700 dark:text-gray-200"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Continue with Google
+                </button>
+              ) : null}
 
-              <button
-                type="button"
-                onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
-                className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-slate-700 rounded-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-gray-700 dark:text-gray-200"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#F25022" d="M1 1h10v10H1z"/>
-                  <path fill="#00A4EF" d="M13 1h10v10H13z"/>
-                  <path fill="#7FBA00" d="M1 13h10v10H1z"/>
-                  <path fill="#FFB900" d="M13 13h10v10H13z"/>
-                </svg>
-                Continue with Microsoft
-              </button>
+              {enabledOauthProviders.microsoft ? (
+                <button
+                  type="button"
+                  onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/" })}
+                  className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-slate-700 rounded-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors font-medium text-gray-700 dark:text-gray-200"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#F25022" d="M1 1h10v10H1z"/>
+                    <path fill="#00A4EF" d="M13 1h10v10H13z"/>
+                    <path fill="#7FBA00" d="M1 13h10v10H1z"/>
+                    <path fill="#FFB900" d="M13 13h10v10H13z"/>
+                  </svg>
+                  Continue with Microsoft
+                </button>
+              ) : null}
+
+              {!hasAnyOauthProvider ? (
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  OAuth2 providers are not configured yet. Set provider client ID and client secret in your environment.
+                </p>
+              ) : null}
             </>
           )}
         </div>

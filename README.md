@@ -63,6 +63,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `GOOGLE_CLIENT_SECRET` | No | Custom Google OAuth secret |
 | `MICROSOFT_CLIENT_ID` | No | Custom Microsoft OAuth — required for Outlook accounts |
 | `MICROSOFT_CLIENT_SECRET` | No | Custom Microsoft OAuth secret |
+| `MICROSOFT_TENANT_ID` | No | Optional Azure tenant ID to force tenant-scoped Microsoft OAuth issuer |
+| `MICROSOFT_AUTHORITY` | No | Optional when no tenant ID: `common` (default), `consumers`, or `organizations` |
 
 **AI Provider Priority**: The system automatically selects the first available provider:
 
@@ -85,6 +87,23 @@ npm test          # Jest test suite
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full one-page architecture document.
+
+## OAuth Provider Status
+
+You can verify OAuth provider setup at runtime using:
+
+- `GET /api/auth/provider-status`
+
+This endpoint returns enabled/disabled status and missing env vars for Google and Microsoft OAuth providers (without exposing secret values).
+
+When using Microsoft OAuth for real mailbox data (not demo mode), ensure the app registration has delegated Microsoft Graph permissions:
+
+- `User.Read`
+- `Mail.Read`
+- `Mail.ReadWrite`
+- `Mail.Send`
+
+If mail permissions are missing, Microsoft sign-in can still succeed but email APIs may fall back to demo/mock data.
 
 ## Agents, Skills, Hooks & Plugins
 
