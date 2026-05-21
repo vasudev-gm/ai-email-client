@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ChevronDown, Plus, Check } from "lucide-react"
+import { ChevronDown, Plus, Check, Trash2 } from "lucide-react"
 import { useEmailStore } from "@/store/emailStore"
 import { signIn, useSession } from "next-auth/react"
 import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
@@ -11,6 +11,7 @@ type AccountOption = {
   email: string
   provider: string
   color: string
+  oauthProvider?: "google" | "microsoft-entra-id"
 }
 
 const mockAccounts: AccountOption[] = [
@@ -27,6 +28,32 @@ const PROVIDER_COLOR_MAP: Record<string, string> = {
   Yahoo: "#7E22CE",
   AOL: "#2563EB",
   IMAP: "#6B7280",
+}
+
+function toProviderLabel(provider?: string) {
+  if (provider === "google") return "Google"
+  if (provider === "microsoft-entra-id") return "Microsoft"
+  if (provider === "credentials") return "IMAP"
+  return "IMAP"
+}
+
+function toOauthProvider(provider?: string): AccountOption["oauthProvider"] {
+  if (provider === "google") return "google"
+  if (provider === "microsoft-entra-id") return "microsoft-entra-id"
+  return undefined
+}
+
+function createOauthAccount(email: string, provider?: string): AccountOption {
+  const normalizedEmail = email.trim().toLowerCase()
+  const label = toProviderLabel(provider)
+  const oauthProvider = toOauthProvider(provider)
+  return {
+    id: `oauth-${oauthProvider || "imap"}-${normalizedEmail}`,
+    email,
+    provider: label,
+    color: PROVIDER_COLOR_MAP[label] || PROVIDER_COLOR_MAP.IMAP,
+    oauthProvider,
+  }
 }
 const GOOGLE_IMAP_DEFAULTS = { host: "imap.gmail.com", port: "993" }
 const IMAP_PROVIDER_DEFAULTS: Record<string, { host: string; port: string }> = {
@@ -60,7 +87,8 @@ export default function AccountSwitcher() {
           account?.id &&
           EMAIL_REGEX.test(account.email) &&
           account.provider in PROVIDER_COLOR_MAP &&
-          COLOR_REGEX.test(account.color)
+          COLOR_REGEX.test(account.color) &&
+          (!account.oauthProvider || account.oauthProvider === "google" || account.oauthProvider === "microsoft-entra-id")
         )
       )
     } catch {
@@ -76,24 +104,43 @@ export default function AccountSwitcher() {
   const [error, setError] = useState("")
   const [errorField, setErrorField] = useState<"email" | "imapHost" | "imapPassword" | null>(null)
   const { selectedAccountId, setSelectedAccountId } = useEmailStore()
-  const sessionEmail = session?.user?.email
+  const sessionEmail = session?.user?.email || ""
+  const sessionProvider = session?.provider
   const sessionAccount = useMemo(
     () =>
       sessionEmail
-        ? {
-            id: `session-${sessionEmail}`,
-            email: sessionEmail,
-            provider: "Google",
-            color: PROVIDER_COLOR_MAP.Google,
-          }
+        ? createOauthAccount(sessionEmail, sessionProvider)
         : null,
-    [sessionEmail]
+    [sessionEmail, sessionProvider]
   )
-  const accounts = useMemo(
-    () => (sessionAccount ? [sessionAccount, ...persistedAccounts] : mockAccounts),
-    [sessionAccount, persistedAccounts]
-  )
+  const accounts = useMemo(() => {
+    if (!sessionAccount && persistedAccounts.length === 0) return mockAccounts
+    if (!sessionAccount) return persistedAccounts
+
+    const withoutActive = persistedAccounts.filter((account) => account.id !== sessionAccount.id)
+    return [sessionAccount, ...withoutActive]
+  }, [sessionAccount, persistedAccounts])
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || accounts[0]
+
+  const removePersistedAccount = (accountId: string) => {
+    setPersistedAccounts((current) => current.filter((account) => account.id !== accountId))
+
+    if (selectedAccountId === accountId) {
+      const fallbackId =
+        (sessionAccount && sessionAccount.id !== accountId ? sessionAccount.id : null) ||
+        persistedAccounts.find((account) => account.id !== accountId)?.id ||
+        null
+      setSelectedAccountId(fallbackId)
+    }
+  }
+
+  useEffect(() => {
+    if (!sessionAccount) return
+    setPersistedAccounts((current) => {
+      if (current.some((account) => account.id === sessionAccount.id)) return current
+      return [sessionAccount, ...current]
+    })
+  }, [sessionAccount])
 
   useEffect(() => {
     window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(persistedAccounts))
@@ -238,31 +285,55 @@ export default function AccountSwitcher() {
           <div id="account-menu" role="menu" className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-20 overflow-hidden">
             <div className="p-2">
               {accounts.map((account) => (
-                <button
+                <div
                   key={account.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={selectedAccount?.id === account.id}
-                  onClick={() => {
-                    setSelectedAccountId(account.id)
-                    setIsOpen(false)
-                  }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="w-full flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                    style={{ backgroundColor: account.color }}
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={selectedAccount?.id === account.id}
+                    onClick={() => {
+                      if (account.oauthProvider && account.id !== sessionAccount?.id) {
+                        setSelectedAccountId(account.id)
+                        setIsOpen(false)
+                        void signIn(account.oauthProvider, {
+                          callbackUrl: "/",
+                          login_hint: account.email,
+                        })
+                        return
+                      }
+
+                      setSelectedAccountId(account.id)
+                      setIsOpen(false)
+                    }}
+                    className="flex-1 flex items-center gap-3 px-1 py-1 text-left"
                   >
-                    {account.email[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{account.email}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{account.provider}</p>
-                  </div>
-                  {selectedAccount?.id === account.id && (
-                    <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                      style={{ backgroundColor: account.color }}
+                    >
+                      {account.email[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{account.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{account.provider}</p>
+                    </div>
+                    {selectedAccount?.id === account.id && (
+                      <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    )}
+                  </button>
+                  {persistedAccounts.some((storedAccount) => storedAccount.id === account.id) && (
+                    <button
+                      type="button"
+                      aria-label={`Remove account ${account.email}`}
+                      onClick={() => removePersistedAccount(account.id)}
+                      className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
-                </button>
+                </div>
               ))}
             </div>
             <div className="border-t border-gray-100 dark:border-gray-700 p-2">

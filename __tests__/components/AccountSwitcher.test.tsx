@@ -194,4 +194,26 @@ describe("AccountSwitcher", () => {
       "Microsoft (OAuth2 custom sign-in)",
     ])
   })
+
+  it("can remove a persisted account", () => {
+    jest.spyOn(Storage.prototype, "getItem").mockReturnValue(
+      JSON.stringify([
+        {
+          id: "acc-old",
+          email: "old@example.com",
+          provider: "IMAP",
+          color: "#6B7280",
+        },
+      ])
+    )
+
+    render(<AccountSwitcher />)
+
+    fireEvent.click(screen.getByRole("button", { name: /me@example.com/i }))
+    expect(screen.getByText("old@example.com")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /remove account old@example\.com/i }))
+
+    expect(screen.queryByText("old@example.com")).not.toBeInTheDocument()
+  })
 })

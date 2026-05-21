@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { MOCK_EMAILS } from "@/lib/email-utils"
 import { auth } from "@/lib/auth"
+import { sendGmailEmail } from "@/lib/gmail"
 import { sendOutlookEmail } from "@/lib/outlook"
 
 export async function POST(request: Request) {
@@ -12,6 +13,30 @@ export async function POST(request: Request) {
   }
 
   const session = await auth()
+  if (session?.provider === "google" && session.accessToken) {
+    try {
+      const result = await sendGmailEmail(
+        { accessToken: session.accessToken },
+        {
+          to,
+          cc,
+          bcc,
+          subject,
+          body: content,
+        }
+      )
+
+      return NextResponse.json({
+        success: true,
+        messageId: result.messageId,
+        message: "Email sent successfully via Gmail",
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error"
+      return NextResponse.json({ error: `Gmail send failed: ${message}` }, { status: 502 })
+    }
+  }
+
   if (session?.provider === "microsoft-entra-id" && session.accessToken) {
     try {
       const result = await sendOutlookEmail(

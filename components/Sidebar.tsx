@@ -2,7 +2,7 @@
 
 import { useEmailStore } from "@/store/emailStore"
 import {
-  Inbox, Star, Send, FileText, Archive, Trash2, Settings, X
+  Inbox, Star, Send, FileText, Archive, ShieldAlert, Trash2, Settings, X
 } from "lucide-react"
 
 interface SidebarProps {
@@ -13,17 +13,19 @@ interface SidebarProps {
     SENT: number
     DRAFTS: number
     ARCHIVED: number
+    JUNK: number
     DELETED: number
   }
 }
 
 export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps) {
   const folders = [
-    { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount },
+    { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount > 0 ? inboxUnreadCount : undefined },
     { id: "STARRED", label: "Starred", icon: Star, count: folderCounts.STARRED > 0 ? folderCounts.STARRED : undefined },
     { id: "SENT", label: "Sent", icon: Send, count: folderCounts.SENT > 0 ? folderCounts.SENT : undefined },
     { id: "DRAFTS", label: "Drafts", icon: FileText, count: folderCounts.DRAFTS > 0 ? folderCounts.DRAFTS : undefined },
     { id: "ARCHIVED", label: "Archived", icon: Archive, count: folderCounts.ARCHIVED > 0 ? folderCounts.ARCHIVED : undefined },
+    { id: "JUNK", label: "Spam", icon: ShieldAlert, count: folderCounts.JUNK > 0 ? folderCounts.JUNK : undefined },
     { id: "DELETED", label: "Deleted", icon: Trash2, count: folderCounts.DELETED > 0 ? folderCounts.DELETED : undefined },
   ]
 
@@ -76,7 +78,7 @@ export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps
                 <Icon className="w-4 h-4" />
                 <span>{folder.label}</span>
               </div>
-              {folder.count && (
+              {typeof folder.count === "number" && folder.count > 0 && (
                 <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${
                   isActive ? "bg-blue-500 text-white" : "bg-gray-700 text-gray-300"
                 }`}>

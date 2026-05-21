@@ -98,4 +98,22 @@ describe("EmailList", () => {
 
     expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "delete")
   })
+
+  it("supports not spam selected action in junk folder", () => {
+    const onBulkAction = jest.fn()
+    render(
+      <EmailList
+        emails={MOCK_EMAILS.slice(0, 2)}
+        currentFolder="JUNK"
+        selectedEmailId={null}
+        onSelectEmail={() => {}}
+        onBulkAction={onBulkAction}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText(/select all/i))
+    fireEvent.click(screen.getByRole("button", { name: /^not spam$/i }))
+
+    expect(onBulkAction).toHaveBeenCalledWith(["1", "2"], "notSpam")
+  })
 })

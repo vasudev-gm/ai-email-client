@@ -4,7 +4,7 @@ import { useState } from "react"
 import { EmailData, extractDisplayName, extractEmailAddress } from "@/lib/email-utils"
 import AISummary from "./AISummary"
 import ReplyDraft from "./ReplyDraft"
-import { ArrowLeft, Star, Archive, Trash2, Reply, Forward, RotateCcw } from "lucide-react"
+import { ArrowLeft, Star, Archive, Trash2, Reply, Forward, RotateCcw, ShieldCheck } from "lucide-react"
 
 interface EmailViewerProps {
   email: EmailData
@@ -13,9 +13,10 @@ interface EmailViewerProps {
   onForward: () => void
   onDelete: () => void
   onRestore: () => void
+  onNotSpam: () => void
 }
 
-export default function EmailViewer({ email, onBack, onReply, onForward, onDelete, onRestore }: EmailViewerProps) {
+export default function EmailViewer({ email, onBack, onReply, onForward, onDelete, onRestore, onNotSpam }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
 
@@ -33,19 +34,47 @@ export default function EmailViewer({ email, onBack, onReply, onForward, onDelet
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-1">
-            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+            <button
+              title="Archive"
+              aria-label="Archive email"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+            >
               <Archive className="w-4 h-4" />
             </button>
             {!email.isDeleted ? (
-               <button onClick={onDelete} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300" aria-label="Delete email">
+               <button
+                onClick={onDelete}
+                title="Delete"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                aria-label="Delete email"
+              >
               <Trash2 className="w-4 h-4" />
             </button>
             ) : (
-               <button onClick={onRestore} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300" aria-label="Restore email">
+               <button
+                onClick={onRestore}
+                title="Restore"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                aria-label="Restore email"
+              >
                 <RotateCcw className="w-4 h-4" />
               </button>
             )}
-            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">
+            {email.folder === "JUNK" && (
+              <button
+                onClick={onNotSpam}
+                title="Mark as not spam"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                aria-label="Mark as not spam"
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              title={email.isStarred ? "Unstar" : "Star"}
+              aria-label={email.isStarred ? "Unstar email" : "Star email"}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+            >
               <Star className={`w-4 h-4 ${email.isStarred ? "text-yellow-400 fill-yellow-400" : ""}`} />
             </button>
           </div>

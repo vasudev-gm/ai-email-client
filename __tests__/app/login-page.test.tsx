@@ -229,6 +229,37 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /use microsoft oauth2 below/i })).toBeDisabled()
   })
 
+  it("shows a Google OAuth reliability hint when account domain is Gmail", async () => {
+    render(<LoginPage />)
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "person@gmail.com" },
+    })
+
+    expect(
+      await screen.findByText(/for gmail accounts, oauth2 sign-in below is usually more reliable than imap app passwords/i)
+    ).toBeInTheDocument()
+
+    expect(screen.getByRole("button", { name: /use google oauth2 below/i })).toBeDisabled()
+  })
+
+  it("blocks IMAP submit for Gmail addresses when Google OAuth is configured", async () => {
+    render(<LoginPage />)
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "person@gmail.com" },
+    })
+    fireEvent.change(screen.getByLabelText(/password \/ app password/i), {
+      target: { value: "bad-password" },
+    })
+
+    const submitButton = await screen.findByRole("button", { name: /use google oauth2 below/i })
+    expect(submitButton).toBeDisabled()
+    fireEvent.click(submitButton)
+
+    expect(mockSignIn).not.toHaveBeenCalledWith("credentials", expect.anything())
+  })
+
   it("blocks IMAP submit for Outlook addresses when Microsoft OAuth is configured", async () => {
     render(<LoginPage />)
 
@@ -258,6 +289,21 @@ describe("LoginPage", () => {
 
     expect(
       await screen.findByText(/microsoft oauth2 isn't configured yet/i)
+    ).toBeInTheDocument()
+  })
+
+  it("shows Google OAuth setup hint when provider is not configured", async () => {
+    mockGetProviders.mockResolvedValue({
+      "microsoft-entra-id": { id: "microsoft-entra-id", name: "Microsoft" },
+    })
+    render(<LoginPage />)
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "person@gmail.com" },
+    })
+
+    expect(
+      await screen.findByText(/google oauth2 isn't configured yet/i)
     ).toBeInTheDocument()
   })
 })

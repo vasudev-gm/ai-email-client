@@ -11,7 +11,7 @@ interface EmailListProps {
   onSelectEmail: (id: string) => void
   onBulkAction?: (
     ids: string[],
-    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore"
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam"
   ) => Promise<void> | void
   loading?: boolean
 }
@@ -74,7 +74,7 @@ export default function EmailList({
   }, [])
 
   const runBulkAction = (
-    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore",
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam",
     ids = selectedIds
   ) => {
     if (!ids.length || !onBulkAction) return
@@ -165,6 +165,15 @@ export default function EmailList({
                 className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 disabled:opacity-40"
             >
               Restore
+            </button>
+          )}
+          {currentFolder === "JUNK" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("notSpam")}
+              className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 disabled:opacity-40"
+            >
+              Not Spam
             </button>
           )}
         </div>

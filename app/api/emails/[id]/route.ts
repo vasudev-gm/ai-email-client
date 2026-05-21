@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { MOCK_EMAILS } from "@/lib/email-utils"
 import { auth } from "@/lib/auth"
+import { deleteGmailEmail, fetchGmailEmailById, patchGmailEmail } from "@/lib/gmail"
 import { deleteOutlookEmail, fetchOutlookEmailById, moveOutlookEmail, patchOutlookEmail } from "@/lib/outlook"
 
 export async function GET(
@@ -11,6 +12,16 @@ export async function GET(
   const { id } = await params
 
   const session = await auth()
+  if (session?.provider === "google" && session.accessToken) {
+    try {
+      const email = await fetchGmailEmailById({ accessToken: session.accessToken }, id)
+      return NextResponse.json(email)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error"
+      return NextResponse.json({ error: `Gmail email fetch failed: ${message}` }, { status: 502 })
+    }
+  }
+
   if (session?.provider === "microsoft-entra-id" && session.accessToken) {
     try {
       const email = await fetchOutlookEmailById({ accessToken: session.accessToken }, id)
@@ -36,6 +47,26 @@ export async function PATCH(
   const body = await request.json()
 
   const session = await auth()
+  if (session?.provider === "google" && session.accessToken) {
+    try {
+      await patchGmailEmail(
+        { accessToken: session.accessToken },
+        id,
+        {
+          isRead: typeof body.isRead === "boolean" ? body.isRead : undefined,
+          isStarred: typeof body.isStarred === "boolean" ? body.isStarred : undefined,
+          isArchived: typeof body.isArchived === "boolean" ? body.isArchived : undefined,
+          isDeleted: typeof body.isDeleted === "boolean" ? body.isDeleted : undefined,
+          isJunk: typeof body.isJunk === "boolean" ? body.isJunk : undefined,
+        }
+      )
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error"
+      return NextResponse.json({ error: `Gmail update failed: ${message}` }, { status: 502 })
+    }
+  }
+
   if (session?.provider === "microsoft-entra-id" && session.accessToken) {
     try {
       await patchOutlookEmail(
@@ -57,6 +88,9 @@ export async function PATCH(
       }
       if (typeof body.isDeleted === "boolean" && body.isDeleted) {
         await deleteOutlookEmail({ accessToken: session.accessToken }, id)
+      }
+      if (typeof body.isJunk === "boolean" && !body.isJunk) {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "inbox")
       }
       return NextResponse.json({ success: true })
     } catch (error) {
@@ -82,6 +116,13 @@ export async function PATCH(
   if (typeof body.isDeleted === "boolean") {
     email.isDeleted = body.isDeleted
   }
+  if (typeof body.isJunk === "boolean") {
+    email.folder = body.isJunk ? "JUNK" : "INBOX"
+    if (!body.isJunk) {
+      email.isDeleted = false
+      email.isArchived = false
+    }
+  }
 
   return NextResponse.json({ success: true, email })
 }
@@ -94,6 +135,16 @@ export async function DELETE(
   const { id } = await params
 
   const session = await auth()
+  if (session?.provider === "google" && session.accessToken) {
+    try {
+      await deleteGmailEmail({ accessToken: session.accessToken }, id)
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error"
+      return NextResponse.json({ error: `Gmail delete failed: ${message}` }, { status: 502 })
+    }
+  }
+
   if (session?.provider === "microsoft-entra-id" && session.accessToken) {
     try {
       await deleteOutlookEmail({ accessToken: session.accessToken }, id)

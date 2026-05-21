@@ -17,6 +17,7 @@ describe("EmailViewer", () => {
         onForward={onForward}
         onDelete={() => {}}
         onRestore={() => {}}
+        onNotSpam={() => {}}
       />
     )
 
@@ -35,10 +36,30 @@ describe("EmailViewer", () => {
         onForward={() => {}}
         onDelete={() => {}}
         onRestore={() => {}}
+        onNotSpam={() => {}}
       />
     )
 
     fireEvent.click(screen.getByRole("button", { name: /^reply$/i }))
     expect(onReply).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onNotSpam when Mark as not spam is clicked for junk email", () => {
+    const onNotSpam = jest.fn()
+
+    render(
+      <EmailViewer
+        email={{ ...MOCK_EMAILS[0], folder: "JUNK" }}
+        onBack={() => {}}
+        onReply={() => {}}
+        onForward={() => {}}
+        onDelete={() => {}}
+        onRestore={() => {}}
+        onNotSpam={onNotSpam}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: /mark as not spam/i }))
+    expect(onNotSpam).toHaveBeenCalledTimes(1)
   })
 })

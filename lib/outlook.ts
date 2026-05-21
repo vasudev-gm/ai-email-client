@@ -299,6 +299,7 @@ function getFolderPath(folder: string) {
   if (normalized === "INBOX") return "/me/mailFolders/inbox/messages"
   if (normalized === "SENT") return "/me/mailFolders/sentitems/messages"
   if (normalized === "DRAFTS") return "/me/mailFolders/drafts/messages"
+  if (normalized === "JUNK") return "/me/mailFolders/junkemail/messages"
   if (normalized === "DELETED") return "/me/mailFolders/deleteditems/messages"
   if (normalized === "ARCHIVED") return "/me/mailFolders/archive/messages"
   if (normalized === "STARRED") {

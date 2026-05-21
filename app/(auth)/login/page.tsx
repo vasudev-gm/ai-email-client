@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { getProviders, signIn } from "next-auth/react"
 
 const MICROSOFT_EMAIL_DOMAINS = ["outlook.com", "hotmail.com", "live.com", "msn.com"]
+const GOOGLE_EMAIL_DOMAINS = ["gmail.com", "googlemail.com"]
 
 function suggestSmtpHostFromEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase()
@@ -94,8 +95,11 @@ export default function LoginPage() {
 
   const emailDomain = useMemo(() => getDomainFromEmail(imapForm.email), [imapForm.email])
   const isMicrosoftAddress = MICROSOFT_EMAIL_DOMAINS.includes(emailDomain)
+  const isGoogleAddress = GOOGLE_EMAIL_DOMAINS.includes(emailDomain)
   const hasAnyOauthProvider = enabledOauthProviders.google || enabledOauthProviders.microsoft
   const shouldBlockMicrosoftImap = isMicrosoftAddress && enabledOauthProviders.microsoft
+  const shouldBlockGoogleImap = isGoogleAddress && enabledOauthProviders.google
+  const shouldBlockImapSubmit = shouldBlockMicrosoftImap || shouldBlockGoogleImap
 
   const handleImapSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,6 +108,12 @@ export default function LoginPage() {
     if (shouldBlockMicrosoftImap) {
       setShowOauth(true)
       setImapError("For Microsoft accounts, use OAuth2 sign-in instead of IMAP password login.")
+      return
+    }
+
+    if (shouldBlockGoogleImap) {
+      setShowOauth(true)
+      setImapError("For Gmail accounts, use Google OAuth2 sign-in instead of IMAP password login.")
       return
     }
 
@@ -241,11 +251,27 @@ export default function LoginPage() {
             </div>
             <button
               type="submit"
-              disabled={loading || shouldBlockMicrosoftImap}
+              disabled={loading || shouldBlockImapSubmit}
               className="w-full bg-blue-600 text-white rounded-lg px-4 py-2.5 font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {loading ? "Connecting..." : shouldBlockMicrosoftImap ? "Use Microsoft OAuth2 Below" : "Connect via IMAP/SMTP"}
+              {loading
+                ? "Connecting..."
+                : shouldBlockMicrosoftImap
+                  ? "Use Microsoft OAuth2 Below"
+                  : shouldBlockGoogleImap
+                    ? "Use Google OAuth2 Below"
+                    : "Connect via IMAP/SMTP"}
             </button>
+            {isGoogleAddress && enabledOauthProviders.google ? (
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                For Gmail accounts, OAuth2 sign-in below is usually more reliable than IMAP app passwords.
+              </p>
+            ) : null}
+            {isGoogleAddress && !enabledOauthProviders.google ? (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Google OAuth2 isn&apos;t configured yet. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it.
+              </p>
+            ) : null}
             {isMicrosoftAddress && enabledOauthProviders.microsoft ? (
               <p className="text-xs text-blue-700 dark:text-blue-300">
                 For Microsoft accounts, OAuth2 sign-in below is usually more reliable than IMAP passwords.

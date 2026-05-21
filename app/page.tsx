@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { signOut, useSession } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
 import EmailList from "@/components/EmailList"
@@ -15,10 +15,41 @@ import { ACCOUNT_STORAGE_KEY } from "@/lib/account-storage"
 import { toApiAccountId } from "@/lib/account-filter"
 import { PenSquare, Menu, LogOut, RefreshCw } from "lucide-react"
 
-type FolderId = "INBOX" | "STARRED" | "SENT" | "DRAFTS" | "ARCHIVED" | "DELETED"
+type FolderId = "INBOX" | "STARRED" | "SENT" | "DRAFTS" | "ARCHIVED" | "JUNK" | "DELETED"
 type FolderCountMap = Record<FolderId, number>
+type ToastState = {
+  message: string
+  tone: "success" | "error"
+}
 
-const FOLDERS: FolderId[] = ["INBOX", "STARRED", "SENT", "DRAFTS", "ARCHIVED", "DELETED"]
+class ApiRequestError extends Error {
+  status: number
+  source?: string
+  code?: string
+  apiStatus?: string
+  reauthRequired?: boolean
+  setupRequired?: boolean
+
+  constructor(message: string, options: {
+    status: number
+    source?: string
+    code?: string
+    apiStatus?: string
+    reauthRequired?: boolean
+    setupRequired?: boolean
+  }) {
+    super(message)
+    this.name = "ApiRequestError"
+    this.status = options.status
+    this.source = options.source
+    this.code = options.code
+    this.apiStatus = options.apiStatus
+    this.reauthRequired = options.reauthRequired
+    this.setupRequired = options.setupRequired
+  }
+}
+
+const FOLDERS: FolderId[] = ["INBOX", "STARRED", "SENT", "DRAFTS", "ARCHIVED", "JUNK", "DELETED"]
 
 const EMPTY_COUNTS: FolderCountMap = {
   INBOX: 0,
@@ -26,6 +57,7 @@ const EMPTY_COUNTS: FolderCountMap = {
   SENT: 0,
   DRAFTS: 0,
   ARCHIVED: 0,
+  JUNK: 0,
   DELETED: 0,
 }
 
@@ -36,34 +68,36 @@ function getAccountQuery(selectedAccountId: string | null) {
 
 async function fetchFolderCounts(selectedAccountId: string | null) {
   const accountQuery = getAccountQuery(selectedAccountId)
-  const responses = await Promise.all(
-    FOLDERS.map((folder) => fetch(`/api/emails?folder=${folder}${accountQuery}`))
-  )
-  const payloads = await Promise.all(responses.map((response) => response.json()))
-  const folderEmails = FOLDERS.reduce<Record<FolderId, EmailData[]>>((acc, folder, index) => {
-    acc[folder] = payloads[index]?.emails || []
-    return acc
-  }, {
-    INBOX: [],
-    STARRED: [],
-    SENT: [],
-    DRAFTS: [],
-    ARCHIVED: [],
-    DELETED: [],
-  })
+  const response = await fetch(`/api/emails?folder=ALL&countOnly=1&unreadOnly=1${accountQuery}`)
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new ApiRequestError(
+      payload?.error || `Failed to fetch folder counts (status: ${response.status})`,
+      {
+        status: response.status,
+        source: payload?.source,
+        code: payload?.code,
+        apiStatus: payload?.apiStatus,
+        reauthRequired: payload?.reauthRequired,
+        setupRequired: payload?.setupRequired,
+      }
+    )
+  }
+  const folderCounts = {
+    INBOX: Number(payload?.folderCounts?.INBOX || 0),
+    STARRED: Number(payload?.folderCounts?.STARRED || 0),
+    SENT: Number(payload?.folderCounts?.SENT || 0),
+    DRAFTS: Number(payload?.folderCounts?.DRAFTS || 0),
+    ARCHIVED: Number(payload?.folderCounts?.ARCHIVED || 0),
+    JUNK: Number(payload?.folderCounts?.JUNK || 0),
+    DELETED: Number(payload?.folderCounts?.DELETED || 0),
+  } as FolderCountMap
 
-  const inboxUnreadCount = folderEmails.INBOX.filter((email) => !email.isRead).length
+  const inboxUnreadCount = Number(payload?.inboxUnreadCount ?? folderCounts.INBOX)
 
   return {
     inboxUnreadCount,
-    folderCounts: {
-      INBOX: inboxUnreadCount,
-      STARRED: folderEmails.STARRED.length,
-      SENT: folderEmails.SENT.length,
-      DRAFTS: folderEmails.DRAFTS.length,
-      ARCHIVED: folderEmails.ARCHIVED.length,
-      DELETED: folderEmails.DELETED.length,
-    } as FolderCountMap,
+    folderCounts,
   }
 }
 
@@ -75,6 +109,19 @@ async function fetchVisibleEmails(folder: string, searchQuery: string, selectedA
   if (apiAccountId) params.set("accountId", apiAccountId)
   const response = await fetch(`/api/emails?${params}`)
   const data = await response.json()
+  if (!response.ok) {
+    throw new ApiRequestError(
+      data?.error || `Failed to fetch emails (status: ${response.status})`,
+      {
+        status: response.status,
+        source: data?.source,
+        code: data?.code,
+        apiStatus: data?.apiStatus,
+        reauthRequired: data?.reauthRequired,
+        setupRequired: data?.setupRequired,
+      }
+    )
+  }
   return data.emails || []
 }
 
@@ -100,13 +147,27 @@ export default function Home() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [isProviderSetupBlocked, setIsProviderSetupBlocked] = useState(false)
   const [syncClockTick, setSyncClockTick] = useState(0)
   const [composeDraft, setComposeDraft] = useState<{
     to?: string
     subject?: string
     content?: string
   } | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const toastTimeoutRef = useRef<number | null>(null)
   const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
+
+  const showToast = useCallback((message: string, tone: ToastState["tone"] = "success") => {
+    setToast({ message, tone })
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current)
+    }
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(null)
+      toastTimeoutRef.current = null
+    }, 2800)
+  }, [])
 
   const prefixSubject = useCallback((subject: string, prefix: "Re:" | "Fwd:") => {
     const trimmed = subject.trim()
@@ -120,6 +181,18 @@ export default function Home() {
     }
   }, [status])
 
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    setIsProviderSetupBlocked(false)
+  }, [selectedAccountId, session?.provider])
+
   const refreshFolderCounts = useCallback(async () => {
     if (!isAuthenticated) return
     const counts = await fetchFolderCounts(selectedAccountId)
@@ -127,8 +200,9 @@ export default function Home() {
     setFolderCounts(counts.folderCounts)
   }, [selectedAccountId, isAuthenticated])
 
-  const syncVisibleEmails = useCallback(async (withLoading = false, syncAllFolders = false) => {
+  const syncVisibleEmails = useCallback(async (withLoading = false, syncAllFolders = false, force = false) => {
     if (!isAuthenticated) return
+    if (isProviderSetupBlocked && !force) return
     if (withLoading) setLoading(true)
 
     try {
@@ -139,10 +213,18 @@ export default function Home() {
       setEmails(visibleEmails)
       setLastSyncedAt(new Date())
       setSyncError(null)
+      setIsProviderSetupBlocked(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown sync error"
+      setSyncError(message)
+      if (error instanceof ApiRequestError && error.setupRequired) {
+        setIsProviderSetupBlocked(true)
+      }
+      throw error
     } finally {
       if (withLoading) setLoading(false)
     }
-  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, isAuthenticated])
+  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, isAuthenticated, isProviderSetupBlocked])
 
   const lastSyncedLabel = (() => {
     void syncClockTick
@@ -166,7 +248,11 @@ export default function Home() {
   useEffect(() => {
     const fetchEmails = async () => {
       if (!isAuthenticated) return
-      await syncVisibleEmails(true, true)
+      try {
+        await syncVisibleEmails(true, true)
+      } catch {
+        // Error is already captured in syncError state by syncVisibleEmails.
+      }
     }
     void fetchEmails()
   }, [syncVisibleEmails, isAuthenticated])
@@ -175,7 +261,7 @@ export default function Home() {
     if (isSyncing) return
     setIsSyncing(true)
     try {
-      await syncVisibleEmails(false, true)
+      await syncVisibleEmails(false, true, true)
       setSyncError(null)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown sync error"
@@ -302,7 +388,7 @@ export default function Home() {
 
   const handleBulkAction = useCallback(async (
     ids: string[],
-    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore"
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam"
   ) => {
     const actionPayloadMap: Record<typeof action, Record<string, boolean>> = {
       archive: { isArchived: true },
@@ -312,6 +398,7 @@ export default function Home() {
       markRead: { isRead: true },
       markUnread: { isRead: false },
       restore: { isDeleted: false },
+      notSpam: { isJunk: false },
     }
 
     const responses = await Promise.all(
@@ -328,13 +415,19 @@ export default function Home() {
       .filter((id): id is string => Boolean(id))
     if (failedIds.length > 0) {
       console.error(`Bulk email update failed for IDs: ${failedIds.join(", ")}`)
+      showToast("Some emails could not be updated.", "error")
       return
+    }
+
+    if (action === "notSpam") {
+      const movedCount = ids.length
+      showToast(movedCount === 1 ? "Moved 1 email to Inbox." : `Moved ${movedCount} emails to Inbox.`)
     }
 
     const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
     setEmails(refreshedEmails)
     void refreshFolderCounts()
-  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts])
+  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, showToast])
 
   const handleDeleteEmail = useCallback(async () => {
     if (!selectedEmailId) return
@@ -365,6 +458,25 @@ export default function Home() {
     setSelectedEmail(null)
     void refreshFolderCounts()
   }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
+
+  const handleNotSpamEmail = useCallback(async () => {
+    if (!selectedEmailId) return
+    const response = await fetch(`/api/emails/${selectedEmailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isJunk: false }),
+    })
+    if (!response.ok) {
+      console.error(`Failed to mark email as not spam (status: ${response.status})`)
+      showToast("Could not move email to Inbox.", "error")
+      return
+    }
+    setEmails((current) => current.filter((email) => email.id !== selectedEmailId))
+    setSelectedEmailId(null)
+    setSelectedEmail(null)
+    void refreshFolderCounts()
+    showToast("Moved to Inbox.")
+  }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts, showToast])
 
   if (!isAuthenticated) {
     return (
@@ -491,6 +603,7 @@ export default function Home() {
                   onForward={handleForward}
                   onDelete={handleDeleteEmail}
                   onRestore={handleRestoreEmail}
+                  onNotSpam={handleNotSpamEmail}
                 />
             ) : (
               <div className="text-center text-gray-400 dark:text-gray-400">
@@ -513,6 +626,19 @@ export default function Home() {
         onSend={handleSendEmail}
         draft={composeDraft || undefined}
       />
+
+      {toast ? (
+        <div className="fixed bottom-4 right-4 z-50" role="status" aria-live="polite">
+          <div
+            className={`px-3 py-2 rounded-lg text-sm shadow-lg border ${toast.tone === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-700"
+              : "bg-red-50 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700"
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
