@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { useEmailStore } from "@/store/emailStore"
 import {
   Inbox, Star, Send, FileText, Archive, ShieldAlert, Trash2, Settings, X
@@ -16,9 +17,12 @@ interface SidebarProps {
     JUNK: number
     DELETED: number
   }
+  labels: string[]
+  onAddCustomLabel: (label: string) => void
 }
 
-export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps) {
+export default function Sidebar({ inboxUnreadCount, folderCounts, labels, onAddCustomLabel }: SidebarProps) {
+  const [newLabel, setNewLabel] = useState("")
   const folders = [
     { id: "INBOX", label: "Inbox", icon: Inbox, count: inboxUnreadCount > 0 ? inboxUnreadCount : undefined },
     { id: "STARRED", label: "Starred", icon: Star, count: folderCounts.STARRED > 0 ? folderCounts.STARRED : undefined },
@@ -30,6 +34,10 @@ export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps
   ]
 
   const { currentFolder, setCurrentFolder, setIsSidebarOpen } = useEmailStore()
+  const labelColors = useMemo(() => {
+    const palette = ["#3B82F6", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", "#06B6D4", "#84CC16"]
+    return labels.map((label, index) => ({ name: label, color: palette[index % palette.length] }))
+  }, [labels])
 
   const handleFolderClick = (folderId: string) => {
     setCurrentFolder(folderId)
@@ -92,11 +100,7 @@ export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps
         <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">
           Labels
         </div>
-        {[
-          { name: "Work", color: "#3B82F6" },
-          { name: "Personal", color: "#10B981" },
-          { name: "Important", color: "#EF4444" },
-        ].map((label) => (
+        {labelColors.map((label) => (
           <button
             key={label.name}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
@@ -108,6 +112,32 @@ export default function Sidebar({ inboxUnreadCount, folderCounts }: SidebarProps
             <span>{label.name}</span>
           </button>
         ))}
+
+        <div className="mt-2 px-3">
+          <div className="text-[11px] text-gray-500 mb-1">Add custom label</div>
+          <div className="flex items-center gap-1">
+            <input
+              value={newLabel}
+              onChange={(event) => setNewLabel(event.target.value)}
+              placeholder="Custom label"
+              className="flex-1 min-w-0 text-xs px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-700"
+              aria-label="Add custom label"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const trimmed = newLabel.trim()
+                if (!trimmed) return
+                onAddCustomLabel(trimmed)
+                setNewLabel("")
+              }}
+              disabled={!newLabel.trim()}
+              className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+            >
+              Add
+            </button>
+          </div>
+        </div>
       </nav>
 
       <div className="p-3 border-t border-gray-700">

@@ -61,6 +61,8 @@ const EMPTY_COUNTS: FolderCountMap = {
   DELETED: 0,
 }
 
+const CUSTOM_LABELS_STORAGE_KEY = "ai-mail-custom-labels"
+
 function getAccountQuery(selectedAccountId: string | null) {
   const apiAccountId = toApiAccountId(selectedAccountId)
   return apiAccountId ? `&accountId=${encodeURIComponent(apiAccountId)}` : ""
@@ -154,9 +156,18 @@ export default function Home() {
     subject?: string
     content?: string
   } | null>(null)
+  const [customLabels, setCustomLabels] = useState<string[]>([])
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimeoutRef = useRef<number | null>(null)
   const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
+  const knownLabels = Array.from(new Set([
+    "Work",
+    "Personal",
+    "Important",
+    ...customLabels,
+    ...emails.flatMap((email) => (email.labels || []).map((item) => item.label.name.trim())),
+    ...(selectedEmail?.labels || []).map((item) => item.label.name.trim()),
+  ].filter(Boolean)))
 
   const showToast = useCallback((message: string, tone: ToastState["tone"] = "success") => {
     setToast({ message, tone })
@@ -188,6 +199,35 @@ export default function Home() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_LABELS_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as unknown
+      if (Array.isArray(parsed)) {
+        const labels = parsed
+          .map((value) => (typeof value === "string" ? value.trim() : ""))
+          .filter(Boolean)
+        setCustomLabels(Array.from(new Set(labels)))
+      }
+    } catch {
+      // Ignore malformed local storage and keep defaults.
+    }
+  }, [])
+
+  const handleAddCustomLabel = useCallback((label: string) => {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    setCustomLabels((current) => {
+      const exists = current.some((item) => item.toLowerCase() === trimmed.toLowerCase())
+      if (exists) return current
+      const next = [...current, trimmed]
+      localStorage.setItem(CUSTOM_LABELS_STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+    showToast(`Custom label '${trimmed}' added.`)
+  }, [showToast])
 
   useEffect(() => {
     setIsProviderSetupBlocked(false)
@@ -388,9 +428,10 @@ export default function Home() {
 
   const handleBulkAction = useCallback(async (
     ids: string[],
-    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam"
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam" | "move" | "addLabel",
+    value?: string
   ) => {
-    const actionPayloadMap: Record<typeof action, Record<string, boolean>> = {
+    const actionPayloadMap: Record<typeof action, Record<string, boolean> | Record<string, unknown>> = {
       archive: { isArchived: true },
       unarchive: { isArchived: false },
       delete: { isDeleted: true },
@@ -399,14 +440,19 @@ export default function Home() {
       markUnread: { isRead: false },
       restore: { isDeleted: false },
       notSpam: { isJunk: false },
+      move: value ? { moveToFolder: value } : {},
+      addLabel: value ? { addLabels: [value] } : {},
     }
+
+    const payload = actionPayloadMap[action]
+    if (Object.keys(payload).length === 0) return
 
     const responses = await Promise.all(
       ids.map((id) =>
         fetch(`/api/emails/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(actionPayloadMap[action]),
+          body: JSON.stringify(payload),
         })
       )
     )
@@ -422,6 +468,10 @@ export default function Home() {
     if (action === "notSpam") {
       const movedCount = ids.length
       showToast(movedCount === 1 ? "Moved 1 email to Inbox." : `Moved ${movedCount} emails to Inbox.`)
+    } else if (action === "move" && value) {
+      showToast(ids.length === 1 ? `Moved to ${value}.` : `Moved ${ids.length} emails to ${value}.`)
+    } else if (action === "addLabel" && value) {
+      showToast(ids.length === 1 ? `Label '${value}' added.` : `Label '${value}' added to ${ids.length} emails.`)
     }
 
     const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
@@ -478,6 +528,63 @@ export default function Home() {
     showToast("Moved to Inbox.")
   }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts, showToast])
 
+  const handleMoveEmail = useCallback(async (folder: string) => {
+    if (!selectedEmailId || !folder) return
+    const response = await fetch(`/api/emails/${selectedEmailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moveToFolder: folder }),
+    })
+    if (!response.ok) {
+      console.error(`Failed to move email (status: ${response.status})`)
+      showToast("Could not move email.", "error")
+      return
+    }
+    if (folder.toUpperCase() !== currentFolder.toUpperCase()) {
+      setSelectedEmailId(null)
+      setSelectedEmail(null)
+    }
+    const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
+    setEmails(refreshedEmails)
+    void refreshFolderCounts()
+    showToast(`Moved to ${folder.toUpperCase()}.`)
+  }, [selectedEmailId, currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, setSelectedEmailId, showToast])
+
+  const handleAddEmailLabel = useCallback(async (label: string) => {
+    if (!selectedEmailId || !label.trim()) return
+    const trimmed = label.trim()
+    const response = await fetch(`/api/emails/${selectedEmailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addLabels: [trimmed] }),
+    })
+    if (!response.ok) {
+      console.error(`Failed to add label (status: ${response.status})`)
+      showToast("Could not add label.", "error")
+      return
+    }
+
+    setSelectedEmail((current) => {
+      if (!current) return current
+      const existing = current.labels || []
+      if (existing.some((item) => item.labelId.toLowerCase() === trimmed.toLowerCase())) return current
+      return {
+        ...current,
+        labels: [
+          ...existing,
+          {
+            labelId: trimmed,
+            label: {
+              name: trimmed,
+              color: "#0ea5e9",
+            },
+          },
+        ],
+      }
+    })
+    showToast(`Label '${trimmed}' added.`)
+  }, [selectedEmailId, showToast])
+
   if (!isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-950 text-gray-500 dark:text-gray-300">
@@ -503,7 +610,12 @@ export default function Home() {
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        <Sidebar inboxUnreadCount={inboxUnreadCount} folderCounts={folderCounts} />
+        <Sidebar
+          inboxUnreadCount={inboxUnreadCount}
+          folderCounts={folderCounts}
+          labels={knownLabels}
+          onAddCustomLabel={handleAddCustomLabel}
+        />
       </div>
 
       {/* Main content */}
@@ -518,8 +630,8 @@ export default function Home() {
           </button>
            <div className="flex-1 min-w-0">
              <SearchBar />
-             <div className="mt-1 px-1 flex items-center gap-2">
-               <p className="text-xs text-gray-500 dark:text-gray-300">{lastSyncedLabel}</p>
+             <div className="mt-1 px-1 flex flex-wrap items-center gap-2">
+               <p className="hidden sm:block text-xs text-gray-500 dark:text-gray-300">{lastSyncedLabel}</p>
                <button
                  type="button"
                  onClick={() => void handleManualSync()}
@@ -544,7 +656,9 @@ export default function Home() {
                ) : null}
              </div>
            </div>
-            <ThemeToggle />
+            <div className="ml-[10px] lg:ml-0">
+              <ThemeToggle />
+            </div>
             <AccountSwitcher />
             <button
               onClick={async () => {
@@ -604,6 +718,9 @@ export default function Home() {
                   onDelete={handleDeleteEmail}
                   onRestore={handleRestoreEmail}
                   onNotSpam={handleNotSpamEmail}
+                  onMoveToFolder={handleMoveEmail}
+                  onAddLabel={handleAddEmailLabel}
+                  existingLabels={knownLabels}
                 />
             ) : (
               <div className="text-center text-gray-400 dark:text-gray-400">

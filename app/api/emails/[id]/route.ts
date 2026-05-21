@@ -4,6 +4,20 @@ import { auth } from "@/lib/auth"
 import { deleteGmailEmail, fetchGmailEmailById, patchGmailEmail } from "@/lib/gmail"
 import { deleteOutlookEmail, fetchOutlookEmailById, moveOutlookEmail, patchOutlookEmail } from "@/lib/outlook"
 
+function normalizeMoveFolder(value: unknown) {
+  if (typeof value !== "string") return undefined
+  const normalized = value.trim().toUpperCase()
+  return normalized || undefined
+}
+
+function parseLabels(value: unknown) {
+  if (!Array.isArray(value)) return undefined
+  const labels = value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean)
+  return labels.length > 0 ? labels : undefined
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -45,6 +59,8 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await request.json()
+  const moveToFolder = normalizeMoveFolder(body.moveToFolder)
+  const addLabels = parseLabels(body.addLabels)
 
   const session = await auth()
   if (session?.provider === "google" && session.accessToken) {
@@ -58,6 +74,8 @@ export async function PATCH(
           isArchived: typeof body.isArchived === "boolean" ? body.isArchived : undefined,
           isDeleted: typeof body.isDeleted === "boolean" ? body.isDeleted : undefined,
           isJunk: typeof body.isJunk === "boolean" ? body.isJunk : undefined,
+          moveToFolder,
+          addLabels,
         }
       )
       return NextResponse.json({ success: true })
@@ -75,6 +93,7 @@ export async function PATCH(
         {
           isRead: typeof body.isRead === "boolean" ? body.isRead : undefined,
           isStarred: typeof body.isStarred === "boolean" ? body.isStarred : undefined,
+          addLabels,
         }
       )
       if (typeof body.isArchived === "boolean" && body.isArchived) {
@@ -91,6 +110,21 @@ export async function PATCH(
       }
       if (typeof body.isJunk === "boolean" && !body.isJunk) {
         await moveOutlookEmail({ accessToken: session.accessToken }, id, "inbox")
+      }
+      if (moveToFolder === "INBOX") {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "inbox")
+      } else if (moveToFolder === "ARCHIVED") {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "archive")
+      } else if (moveToFolder === "JUNK") {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "junkemail")
+      } else if (moveToFolder === "DELETED") {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "deleteditems")
+      } else if (moveToFolder === "SENT") {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "sentitems")
+      } else if (moveToFolder === "DRAFTS") {
+        await moveOutlookEmail({ accessToken: session.accessToken }, id, "drafts")
+      } else if (moveToFolder === "STARRED") {
+        await patchOutlookEmail({ accessToken: session.accessToken }, id, { isStarred: true })
       }
       return NextResponse.json({ success: true })
     } catch (error) {
@@ -122,6 +156,33 @@ export async function PATCH(
       email.isDeleted = false
       email.isArchived = false
     }
+  }
+  if (moveToFolder) {
+    if (moveToFolder === "STARRED") {
+      email.isStarred = true
+    } else {
+      email.folder = moveToFolder
+      email.isArchived = moveToFolder === "ARCHIVED"
+      email.isDeleted = moveToFolder === "DELETED"
+      email.isSent = moveToFolder === "SENT"
+      email.isDraft = moveToFolder === "DRAFTS"
+    }
+  }
+  if (addLabels) {
+    const existing = email.labels || []
+    const existingById = new Map(existing.map((item) => [item.labelId, item]))
+    for (const label of addLabels) {
+      if (!existingById.has(label)) {
+        existing.push({
+          labelId: label,
+          label: {
+            name: label,
+            color: "#0ea5e9",
+          },
+        })
+      }
+    }
+    email.labels = existing
   }
 
   return NextResponse.json({ success: true, email })

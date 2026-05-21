@@ -28,6 +28,7 @@ interface OutlookMessage {
   flag?: {
     flagStatus?: string
   }
+  categories?: string[]
 }
 
 interface OutlookAttachment {
@@ -56,6 +57,7 @@ const DEFAULT_SELECT = [
   "receivedDateTime",
   "isRead",
   "flag",
+  "categories",
 ].join(",")
 
 function formatRecipient(recipient?: OutlookRecipient) {
@@ -239,6 +241,8 @@ function toEmailData(message: OutlookMessage, folder: string, options?: { blocke
   const isDraft = normalizedFolder === "DRAFTS"
   const isArchived = normalizedFolder === "ARCHIVED"
 
+  const categories = message.categories || []
+
   return {
     id: message.id,
     accountId: "outlook",
@@ -262,7 +266,13 @@ function toEmailData(message: OutlookMessage, folder: string, options?: { blocke
     aiPriority: null,
     blockedBlobImages: options?.blockedBlobImages,
     blockedImageCount: options?.blockedImageCount,
-    labels: [],
+    labels: categories.map((category) => ({
+      labelId: category,
+      label: {
+        name: category,
+        color: "#0ea5e9",
+      },
+    })),
   }
 }
 
@@ -341,6 +351,7 @@ export async function fetchOutlookEmailById(config: OutlookConfig, id: string) {
 export async function patchOutlookEmail(config: OutlookConfig, id: string, updates: {
   isRead?: boolean
   isStarred?: boolean
+  addLabels?: string[]
 }) {
   const body: Record<string, unknown> = {}
   if (typeof updates.isRead === "boolean") {
@@ -348,6 +359,19 @@ export async function patchOutlookEmail(config: OutlookConfig, id: string, updat
   }
   if (typeof updates.isStarred === "boolean") {
     body.flag = { flagStatus: updates.isStarred ? "flagged" : "notFlagged" }
+  }
+
+  if (Array.isArray(updates.addLabels) && updates.addLabels.length > 0) {
+    const current = await fetchGraph(
+      config,
+      `/me/messages/${encodeURIComponent(id)}?$select=${encodeURIComponent("categories")}`
+    ) as { categories?: string[] }
+    const existing = current?.categories || []
+    const merged = Array.from(new Set([
+      ...existing,
+      ...updates.addLabels.map((label) => label.trim()).filter(Boolean),
+    ]))
+    body.categories = merged
   }
 
   if (Object.keys(body).length === 0) return
@@ -364,7 +388,11 @@ export async function deleteOutlookEmail(config: OutlookConfig, id: string) {
   })
 }
 
-export async function moveOutlookEmail(config: OutlookConfig, id: string, destinationId: "archive" | "inbox") {
+export async function moveOutlookEmail(
+  config: OutlookConfig,
+  id: string,
+  destinationId: "archive" | "inbox" | "junkemail" | "deleteditems" | "drafts" | "sentitems"
+) {
   await fetchGraph(config, `/me/messages/${encodeURIComponent(id)}/move`, {
     method: "POST",
     body: JSON.stringify({ destinationId }),

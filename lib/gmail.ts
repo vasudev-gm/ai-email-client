@@ -70,6 +70,12 @@ interface GmailMessage {
 
 interface GmailLabel {
   id: string
+  name?: string
+  type?: string
+  color?: {
+    textColor?: string
+    backgroundColor?: string
+  }
   messagesUnread?: number
 }
 
@@ -153,6 +159,18 @@ function inferFolder(labelIds: string[] = []) {
   return "ARCHIVED"
 }
 
+function mapGmailFolderToLabelId(folder: string) {
+  const normalized = folder.toUpperCase()
+  if (normalized === "INBOX") return "INBOX"
+  if (normalized === "STARRED") return "STARRED"
+  if (normalized === "SENT") return "SENT"
+  if (normalized === "DRAFTS") return "DRAFT"
+  if (normalized === "JUNK") return "SPAM"
+  if (normalized === "DELETED") return "TRASH"
+  if (normalized === "ARCHIVED") return "ARCHIVED"
+  return null
+}
+
 function toEmailData(message: GmailMessage, requestedFolder?: string): EmailData {
   const labelIds = message.labelIds || []
   const from = getHeaderValue(message.payload?.headers, "From")
@@ -162,6 +180,16 @@ function toEmailData(message: GmailMessage, requestedFolder?: string): EmailData
   const subject = getHeaderValue(message.payload?.headers, "Subject") || "(no subject)"
   const messageId = getHeaderValue(message.payload?.headers, "Message-Id") || message.id
   const folder = requestedFolder?.toUpperCase() || inferFolder(labelIds)
+
+  const displayLabels = labelIds
+    .filter((id) => !["INBOX", "UNREAD", "STARRED", "SENT", "DRAFT", "TRASH", "SPAM", "IMPORTANT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"].includes(id))
+    .map((id) => ({
+      labelId: id,
+      label: {
+        name: id,
+        color: "#64748b",
+      },
+    }))
 
   return {
     id: message.id,
@@ -184,8 +212,46 @@ function toEmailData(message: GmailMessage, requestedFolder?: string): EmailData
     isSent: labelIds.includes("SENT"),
     folder,
     aiPriority: null,
-    labels: [],
+    labels: displayLabels,
   }
+}
+
+async function getOrCreateGmailLabelIds(config: GmailConfig, labelNames: string[]) {
+  if (!labelNames.length) return [] as string[]
+
+  const payload = await fetchGmail<{ labels?: GmailLabel[] }>(config, "/users/me/labels")
+  const labels = payload?.labels || []
+  const byLowerName = new Map(
+    labels
+      .filter((label) => label.name)
+      .map((label) => [String(label.name).toLowerCase(), label.id])
+  )
+
+  const resolvedIds: string[] = []
+  for (const raw of labelNames) {
+    const name = raw.trim()
+    if (!name) continue
+    const existing = byLowerName.get(name.toLowerCase())
+    if (existing) {
+      resolvedIds.push(existing)
+      continue
+    }
+
+    const created = await fetchGmail<{ id: string }>(config, "/users/me/labels", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        labelListVisibility: "labelShow",
+        messageListVisibility: "show",
+      }),
+    })
+    if (created?.id) {
+      byLowerName.set(name.toLowerCase(), created.id)
+      resolvedIds.push(created.id)
+    }
+  }
+
+  return resolvedIds
 }
 
 function buildListQuery(folder: string, options?: { unreadOnly?: boolean }) {
@@ -277,6 +343,8 @@ export async function patchGmailEmail(config: GmailConfig, id: string, updates: 
   isArchived?: boolean
   isDeleted?: boolean
   isJunk?: boolean
+  moveToFolder?: string
+  addLabels?: string[]
 }) {
   const addLabelIds: string[] = []
   const removeLabelIds: string[] = []
@@ -328,11 +396,41 @@ export async function patchGmailEmail(config: GmailConfig, id: string, updates: 
     }
   }
 
-  if (!addLabelIds.length && !removeLabelIds.length) return
+  if (typeof updates.moveToFolder === "string" && updates.moveToFolder.trim()) {
+    const target = updates.moveToFolder.trim().toUpperCase()
+    if (target === "DELETED") {
+      await fetchGmail(config, `/users/me/messages/${encodeURIComponent(id)}/trash`, {
+        method: "POST",
+      })
+    } else if (target === "ARCHIVED") {
+      removeLabelIds.push("INBOX", "SPAM", "TRASH")
+    } else {
+      const mapped = mapGmailFolderToLabelId(target)
+      if (mapped && mapped !== "ARCHIVED") {
+        addLabelIds.push(mapped)
+        if (mapped !== "SPAM") {
+          removeLabelIds.push("SPAM")
+        }
+        if (mapped !== "TRASH") {
+          removeLabelIds.push("TRASH")
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(updates.addLabels) && updates.addLabels.length > 0) {
+    const createdLabelIds = await getOrCreateGmailLabelIds(config, updates.addLabels)
+    addLabelIds.push(...createdLabelIds)
+  }
+
+  const uniqueAddLabelIds = Array.from(new Set(addLabelIds))
+  const uniqueRemoveLabelIds = Array.from(new Set(removeLabelIds)).filter((id) => !uniqueAddLabelIds.includes(id))
+
+  if (!uniqueAddLabelIds.length && !uniqueRemoveLabelIds.length) return
 
   await fetchGmail(config, `/users/me/messages/${encodeURIComponent(id)}/modify`, {
     method: "POST",
-    body: JSON.stringify({ addLabelIds, removeLabelIds }),
+    body: JSON.stringify({ addLabelIds: uniqueAddLabelIds, removeLabelIds: uniqueRemoveLabelIds }),
   })
 }
 
