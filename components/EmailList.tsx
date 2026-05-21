@@ -1,0 +1,351 @@
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { EmailData, formatEmailDate, extractDisplayName, truncateText } from "@/lib/email-utils"
+import { Star } from "lucide-react"
+
+const MOVE_TARGETS = ["INBOX", "STARRED", "SENT", "DRAFTS", "ARCHIVED", "JUNK", "DELETED"] as const
+const COMMON_LABEL_OPTIONS = ["Work", "Personal", "Important"] as const
+
+interface EmailListProps {
+  emails: EmailData[]
+  currentFolder: string
+  selectedEmailId: string | null
+  onSelectEmail: (id: string) => void
+  onBulkAction?: (
+    ids: string[],
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam"
+      | "move" | "addLabel",
+    value?: string
+  ) => Promise<void> | void
+  loading?: boolean
+}
+
+const priorityColors: Record<number, string> = {
+  5: "bg-red-100 text-red-700",
+  4: "bg-orange-100 text-orange-700",
+  3: "bg-yellow-100 text-yellow-700",
+  2: "bg-green-100 text-green-700",
+  1: "bg-gray-100 text-gray-600",
+}
+
+const priorityLabels: Record<number, string> = {
+  5: "Urgent",
+  4: "High",
+  3: "Med",
+  2: "Low",
+  1: "Min",
+}
+
+export default function EmailList({
+  emails,
+  currentFolder,
+  selectedEmailId,
+  onSelectEmail,
+  onBulkAction,
+  loading,
+}: EmailListProps) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isReadMenuOpen, setIsReadMenuOpen] = useState(false)
+  const [moveTarget, setMoveTarget] = useState<string>(currentFolder)
+  const [selectedExistingLabel, setSelectedExistingLabel] = useState("")
+  const readMenuRef = useRef<HTMLDivElement | null>(null)
+  const selectableIds = useMemo(() => emails.map((email) => email.id), [emails])
+  const emailReadState = useMemo(
+    () => new Map(emails.map((email) => [email.id, email.isRead])),
+    [emails]
+  )
+  const hasUnreadEmails = useMemo(() => emails.some((email) => !email.isRead), [emails])
+  const hasReadEmails = useMemo(() => emails.some((email) => email.isRead), [emails])
+  const allSelected = selectableIds.length > 0 && selectedIds.length === selectableIds.length
+  const availableMoveTargets = useMemo(
+    () => MOVE_TARGETS.filter((target) => target !== currentFolder.toUpperCase()),
+    [currentFolder]
+  )
+  const existingLabelOptions = useMemo(() => {
+    const fromEmails = emails.flatMap((email) => (email.labels || []).map((entry) => entry.label.name.trim()))
+    return Array.from(new Set([...COMMON_LABEL_OPTIONS, ...fromEmails].filter(Boolean)))
+  }, [emails])
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : selectableIds)
+  }
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (readMenuRef.current && !readMenuRef.current.contains(event.target as Node)) {
+        setIsReadMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick)
+    return () => document.removeEventListener("mousedown", handleOutsideClick)
+  }, [])
+
+  const runBulkAction = (
+    action: "archive" | "unarchive" | "delete" | "star" | "markRead" | "markUnread" | "restore" | "notSpam" | "move" | "addLabel",
+    ids = selectedIds,
+    value?: string
+  ) => {
+    if (!ids.length || !onBulkAction) return
+    let actionableIds = ids
+    if (action === "markRead") {
+      actionableIds = ids.filter((id) => emailReadState.get(id) === false)
+    } else if (action === "markUnread") {
+      actionableIds = ids.filter((id) => emailReadState.get(id) === true)
+    }
+    if (!actionableIds.length) return
+    onBulkAction(actionableIds, action, value)
+    setSelectedIds([])
+    setIsReadMenuOpen(false)
+  }
+
+  useEffect(() => {
+    setMoveTarget(availableMoveTargets[0] || currentFolder)
+    setSelectedExistingLabel("")
+  }, [currentFolder, availableMoveTargets])
+
+  if (loading) {
+    return (
+      <div className="p-4 space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (emails.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-400">
+        <div className="text-4xl mb-3">📭</div>
+        <p className="font-medium text-gray-600 dark:text-gray-300">No emails found</p>
+        <p className="text-sm mt-1 text-gray-500 dark:text-gray-300">Your folder is empty</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+        <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+          <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+          Select all
+        </label>
+        <div className="text-xs text-gray-500 dark:text-gray-300" role="status" aria-live="polite">
+          {selectedIds.length > 0 ? `${selectedIds.length} selected` : "No selection"}
+        </div>
+      </div>
+      <div className="sticky top-[41px] z-10 bg-white dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col gap-2 sm:gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+          <button
+            disabled={selectedIds.length === 0}
+            onClick={() => runBulkAction("star")}
+            className="text-xs px-2 py-1 rounded bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 disabled:opacity-40"
+          >
+            Star
+          </button>
+          {currentFolder !== "ARCHIVED" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("archive")}
+              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 disabled:opacity-40"
+            >
+              Archive
+            </button>
+          )}
+          {currentFolder === "ARCHIVED" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("unarchive")}
+              className="text-xs px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 disabled:opacity-40"
+            >
+              Unarchive
+            </button>
+          )}
+          <button
+            disabled={selectedIds.length === 0}
+            onClick={() => runBulkAction("delete")}
+            className="text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 disabled:opacity-40"
+          >
+            Delete
+          </button>
+          {currentFolder === "DELETED" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("restore")}
+                className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 disabled:opacity-40"
+            >
+              Restore
+            </button>
+          )}
+          {currentFolder === "JUNK" && (
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("notSpam")}
+              className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 disabled:opacity-40"
+            >
+              Not Spam
+            </button>
+          )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
+            <select
+              value={moveTarget}
+              onChange={(event) => setMoveTarget(event.target.value)}
+              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 w-28 sm:w-auto"
+              aria-label="Move selected emails to folder"
+            >
+              {availableMoveTargets.map((target) => (
+                <option key={target} value={target}>{target}</option>
+              ))}
+            </select>
+            <button
+              disabled={selectedIds.length === 0}
+              onClick={() => runBulkAction("move", selectedIds, moveTarget)}
+              className="text-xs px-2 py-1 rounded bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 disabled:opacity-40"
+            >
+              Move To
+            </button>
+          </div>
+          <div className="flex items-center gap-1">
+            <select
+              value={selectedExistingLabel}
+              onChange={(event) => setSelectedExistingLabel(event.target.value)}
+              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 w-40 sm:w-auto"
+              aria-label="Choose existing label"
+            >
+              <option value="">Existing labels</option>
+              {existingLabelOptions.map((label) => (
+                <option key={label} value={label}>{label}</option>
+              ))}
+            </select>
+            <button
+              disabled={selectedIds.length === 0 || !selectedExistingLabel}
+              onClick={() => {
+                runBulkAction("addLabel", selectedIds, selectedExistingLabel)
+                setSelectedExistingLabel("")
+              }}
+              className="text-xs px-2 py-1 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 disabled:opacity-40"
+            >
+              Add Label
+            </button>
+          </div>
+          <div className="flex justify-start sm:justify-end" ref={readMenuRef}>
+            <div className="relative">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={isReadMenuOpen}
+                aria-label="Read status actions"
+                onClick={() => setIsReadMenuOpen((current) => !current)}
+                className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+              >
+                Read/Unread ▾
+              </button>
+              {isReadMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="Read status actions"
+                  className="absolute left-0 sm:left-auto sm:right-0 mt-1 w-40 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg p-1 z-20"
+                >
+                  <button
+                    role="menuitem"
+                    onClick={() => runBulkAction("markRead")}
+                    disabled={selectedIds.length === 0}
+                    className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    Mark selected read
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => runBulkAction("markUnread")}
+                    disabled={selectedIds.length === 0}
+                    className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    Mark selected unread
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => runBulkAction("markRead", selectableIds)}
+                    disabled={!hasUnreadEmails}
+                    className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    Mark all read
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => runBulkAction("markUnread", selectableIds)}
+                    disabled={!hasReadEmails}
+                    className="w-full text-left text-xs px-2 py-1 rounded text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    Mark all unread
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      {emails.map((email) => (
+        <button
+          key={email.id}
+          onClick={() => onSelectEmail(email.id)}
+          className={`
+            w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+            ${selectedEmailId === email.id ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-600" : ""}
+            ${!email.isRead ? "bg-white dark:bg-gray-900" : "bg-gray-50/50 dark:bg-gray-800/40"}
+          `}
+        >
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(email.id)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={() => toggleSelection(email.id)}
+                aria-label={`Select ${email.subject}`}
+              />
+              {!email.isRead && (
+                <div className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" />
+              )}
+              <span className={`text-sm truncate ${!email.isRead ? "font-semibold text-gray-900 dark:text-gray-100" : "font-medium text-gray-600 dark:text-gray-300"}`}>
+                {extractDisplayName(email.from)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {email.isStarred && <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />}
+              {email.aiPriority && email.aiPriority >= 4 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${priorityColors[email.aiPriority]}`}>
+                  {priorityLabels[email.aiPriority]}
+                </span>
+              )}
+              <span className="text-xs text-gray-400 dark:text-gray-300 whitespace-nowrap">
+                {formatEmailDate(email.date)}
+              </span>
+            </div>
+          </div>
+          <p className={`text-sm truncate mb-1 ${!email.isRead ? "font-medium text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
+            {email.subject}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-300 truncate">
+            {truncateText(email.bodyText || "", 80)}
+          </p>
+        </button>
+      ))}
+    </div>
+  )
+}
