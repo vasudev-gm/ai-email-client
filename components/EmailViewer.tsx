@@ -1,13 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useState } from "react"
 import { EmailData, extractDisplayName, extractEmailAddress } from "@/lib/email-utils"
 import AISummary from "./AISummary"
 import ReplyDraft from "./ReplyDraft"
 import { ArrowLeft, Star, Archive, Trash2, Reply, Forward, RotateCcw, ShieldCheck } from "lucide-react"
-
-const MOVE_TARGETS = ["INBOX", "STARRED", "SENT", "DRAFTS", "ARCHIVED", "JUNK", "DELETED"] as const
-const COMMON_LABEL_OPTIONS = ["Work", "Personal", "Important"] as const
 
 interface EmailViewerProps {
   email: EmailData
@@ -17,39 +14,13 @@ interface EmailViewerProps {
   onDelete: () => void
   onRestore: () => void
   onNotSpam: () => void
-  onMoveToFolder: (folder: string) => void
-  onAddLabel: (label: string) => void
-  existingLabels?: string[]
 }
 
-export default function EmailViewer({ email, onBack, onReply, onForward, onDelete, onRestore, onNotSpam, onMoveToFolder, onAddLabel, existingLabels = [] }: EmailViewerProps) {
+export default function EmailViewer({ email, onBack, onReply, onForward, onDelete, onRestore, onNotSpam }: EmailViewerProps) {
   const [showAISummary, setShowAISummary] = useState(false)
   const [showReplyDraft, setShowReplyDraft] = useState(false)
-  const [moveTarget, setMoveTarget] = useState(email.folder || "INBOX")
-  const [selectedExistingLabel, setSelectedExistingLabel] = useState("")
-  const moveTargetRef = useRef<HTMLSelectElement | null>(null)
-  const existingLabelRef = useRef<HTMLSelectElement | null>(null)
 
   const date = new Date(email.date)
-  const availableMoveTargets = useMemo(
-    () => MOVE_TARGETS.filter((target) => target !== (email.folder || "").toUpperCase()),
-    [email.folder]
-  )
-  const existingLabelOptions = useMemo(
-    () => Array.from(
-      new Set([
-        ...COMMON_LABEL_OPTIONS,
-        ...existingLabels,
-        ...(email.labels || []).map((item) => item.label.name),
-      ].map((label) => label.trim()).filter(Boolean))
-    ),
-    [existingLabels, email.labels]
-  )
-
-  useEffect(() => {
-    setMoveTarget(availableMoveTargets[0] || "INBOX")
-    setSelectedExistingLabel("")
-  }, [email.id, email.folder, availableMoveTargets])
 
   return (
     <div className="flex flex-col h-full">
@@ -107,54 +78,11 @@ export default function EmailViewer({ email, onBack, onReply, onForward, onDelet
               <Star className={`w-4 h-4 ${email.isStarred ? "text-yellow-400 fill-yellow-400" : ""}`} />
             </button>
           </div>
-          <div className="hidden md:flex items-center gap-1 ml-2">
-            <select
-              ref={moveTargetRef}
-              value={moveTarget}
-              onChange={(event) => setMoveTarget(event.target.value)}
-              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700"
-              aria-label="Move email to folder"
-            >
-              {availableMoveTargets.map((target) => (
-                <option key={target} value={target}>{target}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => onMoveToFolder(moveTargetRef.current?.value || moveTarget)}
-              className="text-xs px-2 py-1 rounded bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300"
-            >
-              Move To
-            </button>
-            <select
-              ref={existingLabelRef}
-              value={selectedExistingLabel}
-              onChange={(event) => setSelectedExistingLabel(event.target.value)}
-              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700"
-              aria-label="Choose existing label"
-            >
-              <option value="">Existing labels</option>
-              {existingLabelOptions.map((label) => (
-                <option key={label} value={label}>{label}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => {
-                const trimmed = (existingLabelRef.current?.value || selectedExistingLabel).trim()
-                if (!trimmed) return
-                onAddLabel(trimmed)
-                setSelectedExistingLabel("")
-              }}
-              disabled={!selectedExistingLabel}
-              className="text-xs px-2 py-1 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 disabled:opacity-40"
-            >
-              Add Label
-            </button>
-          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowAISummary(!showAISummary)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
               showAISummary
                 ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -164,7 +92,7 @@ export default function EmailViewer({ email, onBack, onReply, onForward, onDelet
           </button>
           <button
             onClick={() => setShowReplyDraft(!showReplyDraft)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
               showReplyDraft
                 ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"

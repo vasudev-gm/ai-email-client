@@ -304,6 +304,11 @@ async function fetchGraph(config: OutlookConfig, path: string, init?: RequestIni
   return rawBody
 }
 
+function isInefficientFilterError(error: unknown) {
+  if (!(error instanceof Error)) return false
+  return error.message.includes("InefficientFilter")
+}
+
 function getFolderPath(folder: string) {
   const normalized = folder.toUpperCase()
   if (normalized === "INBOX") return "/me/mailFolders/inbox/messages"
@@ -312,13 +317,34 @@ function getFolderPath(folder: string) {
   if (normalized === "JUNK") return "/me/mailFolders/junkemail/messages"
   if (normalized === "DELETED") return "/me/mailFolders/deleteditems/messages"
   if (normalized === "ARCHIVED") return "/me/mailFolders/archive/messages"
-  if (normalized === "STARRED") {
-    return `/me/messages?$select=${encodeURIComponent(DEFAULT_SELECT)}&$top=50&$orderby=receivedDateTime desc&$filter=${encodeURIComponent("flag/flagStatus eq 'flagged'")}`
-  }
   return "/me/messages"
 }
 
+async function fetchOutlookStarredEmails(config: OutlookConfig) {
+  const preferredPath = `/me/messages?$select=${encodeURIComponent(DEFAULT_SELECT)}&$top=50&$filter=${encodeURIComponent("flag/flagStatus eq 'flagged'")}`
+
+  try {
+    const filteredData = (await fetchGraph(config, preferredPath)) as { value?: OutlookMessage[] }
+    const filtered = (filteredData.value || []).filter((message) => message.flag?.flagStatus === "flagged")
+    return filtered.map((message) => toEmailData(message, "STARRED"))
+  } catch (error) {
+    if (!isInefficientFilterError(error)) {
+      throw error
+    }
+
+    // Fallback for Graph tenants where flagged filter becomes non-indexable.
+    const fallbackPath = `/me/messages?$select=${encodeURIComponent(DEFAULT_SELECT)}&$top=80&$orderby=receivedDateTime desc`
+    const fallbackData = (await fetchGraph(config, fallbackPath)) as { value?: OutlookMessage[] }
+    const flagged = (fallbackData.value || []).filter((message) => message.flag?.flagStatus === "flagged")
+    return flagged.map((message) => toEmailData(message, "STARRED"))
+  }
+}
+
 export async function fetchOutlookEmails(config: OutlookConfig, folder = "INBOX") {
+  if (folder.toUpperCase() === "STARRED") {
+    return fetchOutlookStarredEmails(config)
+  }
+
   const basePath = getFolderPath(folder)
   const path = basePath.includes("?")
     ? basePath

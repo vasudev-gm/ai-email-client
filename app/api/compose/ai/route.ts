@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { generateReplyDraftWithOptions } from "@/lib/ai"
+import { generateReplyDraftWithOptions, getAIDebugInfo } from "@/lib/ai"
 
 export async function POST(request: Request) {
   let body: unknown
@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   const content = typeof payload.content === "string" ? payload.content.trim() : ""
   const to = typeof payload.to === "string" ? payload.to.trim() : ""
   const localAIMode = payload.localAIMode === "true-slm" ? "true-slm" : "heuristic"
+  const includeDebug = payload.debug === true
 
   if (!subject && !content) {
     return NextResponse.json({ error: "Subject or content is required" }, { status: 400 })
@@ -26,5 +27,12 @@ export async function POST(request: Request) {
     { localMode: localAIMode }
   )
 
-  return NextResponse.json({ draft })
+  if (!includeDebug) {
+    return NextResponse.json({ draft })
+  }
+
+  return NextResponse.json({
+    draft,
+    aiDebug: await getAIDebugInfo({ localMode: localAIMode }),
+  })
 }

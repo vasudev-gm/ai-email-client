@@ -55,9 +55,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `DATABASE_URL` | Yes | SQLite: `file:./dev.db` or PostgreSQL URL |
 | `NEXTAUTH_SECRET` | Yes | Random string for session encryption |
 | **AI Provider** (choose one or none) | | |
-| `ANTHROPIC_API_KEY` | No | Anthropic Claude API key (recommended) |
-| `OPENAI_API_KEY` | No | OpenAI API key (alternative) |
+| `OPENAI_API_KEY` | No | OpenAI API key (recommended) |
+| `ANTHROPIC_API_KEY` | No | Anthropic Claude API key (alternative) |
 | `OPENAI_MODEL` | No | OpenAI model: gpt-5.4-nano, gpt-5.5, gpt-5.4-mini (default: gpt-5.4-nano) |
+| `AI_PROVIDER` | No | Force provider: `openai`, `anthropic`, or `local` |
 | **Email OAuth** | | |
 | `GOOGLE_CLIENT_ID` | No | Custom Google OAuth — required for Gmail accounts |
 | `GOOGLE_CLIENT_SECRET` | No | Custom Google OAuth secret |
@@ -68,9 +69,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 **AI Provider Priority**: The system automatically selects the first available provider:
 
-1. Anthropic Claude (if `ANTHROPIC_API_KEY` is set)
+1. `AI_PROVIDER` override (if set and valid)
 2. OpenAI (if `OPENAI_API_KEY` is set)
-3. Local fallback modes:
+3. Anthropic Claude (if `ANTHROPIC_API_KEY` is set)
+4. Local fallback modes:
    - Keyword heuristics (always available)
    - True local SLM (`@xenova/transformers`, model downloaded on first use with progress UI)
 

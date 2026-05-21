@@ -51,7 +51,7 @@ export default function ReplyDraft({ emailId, onInsert, localAIMode, onClose }: 
       if (data.draft) {
         setDraft(data.draft)
       } else {
-        setError("Failed to generate draft")
+        setError(data?.error || "Failed to generate draft")
       }
     } catch {
       setError("Network error")

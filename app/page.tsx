@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { signOut, useSession } from "next-auth/react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { signIn, signOut, useSession } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
 import EmailList from "@/components/EmailList"
 import EmailViewer from "@/components/EmailViewer"
@@ -20,6 +20,12 @@ type FolderCountMap = Record<FolderId, number>
 type ToastState = {
   message: string
   tone: "success" | "error"
+}
+
+type StoredAccount = {
+  id: string
+  email: string
+  oauthProvider?: "google" | "microsoft-entra-id"
 }
 
 class ApiRequestError extends Error {
@@ -134,6 +140,7 @@ export default function Home() {
     currentFolder,
     searchQuery,
     selectedAccountId,
+    setSelectedAccountId,
     isComposeOpen,
     isSidebarOpen,
     setSelectedEmailId,
@@ -160,6 +167,16 @@ export default function Home() {
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimeoutRef = useRef<number | null>(null)
   const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
+  const activeSessionAccountId = useMemo(() => {
+    const email = session?.user?.email?.trim().toLowerCase()
+    if (!email) return null
+    const provider = session?.provider === "google"
+      ? "google"
+      : session?.provider === "microsoft-entra-id"
+        ? "microsoft-entra-id"
+        : "imap"
+    return `oauth-${provider}-${email}`
+  }, [session?.provider, session?.user?.email])
   const knownLabels = Array.from(new Set([
     "Work",
     "Personal",
@@ -528,62 +545,42 @@ export default function Home() {
     showToast("Moved to Inbox.")
   }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts, showToast])
 
-  const handleMoveEmail = useCallback(async (folder: string) => {
-    if (!selectedEmailId || !folder) return
-    const response = await fetch(`/api/emails/${selectedEmailId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ moveToFolder: folder }),
-    })
-    if (!response.ok) {
-      console.error(`Failed to move email (status: ${response.status})`)
-      showToast("Could not move email.", "error")
-      return
-    }
-    if (folder.toUpperCase() !== currentFolder.toUpperCase()) {
-      setSelectedEmailId(null)
-      setSelectedEmail(null)
-    }
-    const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
-    setEmails(refreshedEmails)
-    void refreshFolderCounts()
-    showToast(`Moved to ${folder.toUpperCase()}.`)
-  }, [selectedEmailId, currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, setSelectedEmailId, showToast])
-
-  const handleAddEmailLabel = useCallback(async (label: string) => {
-    if (!selectedEmailId || !label.trim()) return
-    const trimmed = label.trim()
-    const response = await fetch(`/api/emails/${selectedEmailId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ addLabels: [trimmed] }),
-    })
-    if (!response.ok) {
-      console.error(`Failed to add label (status: ${response.status})`)
-      showToast("Could not add label.", "error")
+  const handleLogoutSelectedAccount = useCallback(async () => {
+    const selectedId = selectedAccountId
+    if (!selectedId) {
+      await signOut({ callbackUrl: "/login" })
       return
     }
 
-    setSelectedEmail((current) => {
-      if (!current) return current
-      const existing = current.labels || []
-      if (existing.some((item) => item.labelId.toLowerCase() === trimmed.toLowerCase())) return current
-      return {
-        ...current,
-        labels: [
-          ...existing,
-          {
-            labelId: trimmed,
-            label: {
-              name: trimmed,
-              color: "#0ea5e9",
-            },
-          },
-        ],
+    const storedRaw = localStorage.getItem(ACCOUNT_STORAGE_KEY)
+    const parsed = storedRaw ? (JSON.parse(storedRaw) as StoredAccount[]) : []
+    const storedAccounts = Array.isArray(parsed) ? parsed.filter((item) => typeof item?.id === "string") : []
+    const remainingAccounts = storedAccounts.filter((account) => account.id !== selectedId)
+    localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(remainingAccounts))
+
+    const fallback = remainingAccounts[0] || null
+    setSelectedAccountId(fallback?.id || null)
+
+    if (selectedId !== activeSessionAccountId) {
+      showToast("Selected account removed.")
+      return
+    }
+
+    try {
+      await signOut({ redirect: false })
+      if (fallback?.oauthProvider) {
+        await signIn(fallback.oauthProvider, {
+          callbackUrl: "/",
+          login_hint: fallback.email,
+        })
+        return
       }
-    })
-    showToast(`Label '${trimmed}' added.`)
-  }, [selectedEmailId, showToast])
+      window.location.replace("/login")
+    } catch (error) {
+      console.error("Sign out failed:", error)
+      window.location.replace("/login")
+    }
+  }, [selectedAccountId, activeSessionAccountId, setSelectedAccountId, showToast])
 
   if (!isAuthenticated) {
     return (
@@ -661,15 +658,7 @@ export default function Home() {
             </div>
             <AccountSwitcher />
             <button
-              onClick={async () => {
-                localStorage.removeItem(ACCOUNT_STORAGE_KEY)
-                try {
-                  await signOut({ callbackUrl: "/login" })
-                } catch (error) {
-                  console.error("Sign out failed:", error)
-                  window.location.replace("/login")
-                }
-              }}
+              onClick={() => void handleLogoutSelectedAccount()}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
               aria-label="Sign out"
             >
@@ -718,9 +707,6 @@ export default function Home() {
                   onDelete={handleDeleteEmail}
                   onRestore={handleRestoreEmail}
                   onNotSpam={handleNotSpamEmail}
-                  onMoveToFolder={handleMoveEmail}
-                  onAddLabel={handleAddEmailLabel}
-                  existingLabels={knownLabels}
                 />
             ) : (
               <div className="text-center text-gray-400 dark:text-gray-400">

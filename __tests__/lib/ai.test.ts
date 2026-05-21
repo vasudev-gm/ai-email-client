@@ -30,6 +30,22 @@ describe("AI utilities", () => {
     expect(result.length).toBeGreaterThan(0)
   })
 
+  it("heuristic summary surfaces action-oriented sentences", async () => {
+    const body = "This is a short intro. Please review the budget proposal by Friday and confirm approval. Team lunch is next week."
+    const result = await summarizeEmailWithOptions("Budget proposal", body, { localMode: "heuristic" })
+    expect(result.toLowerCase()).toContain("please review")
+  })
+
+  it("heuristic draft includes extracted action points when present", async () => {
+    const draft = await generateReplyDraft(
+      "Q4 timeline",
+      "Could you share the updated milestones by tomorrow? Please include owners and blockers.",
+      "Alex Johnson"
+    )
+    expect(draft).toContain("I noted the following points")
+    expect(draft).toContain("- Could you share the updated milestones by tomorrow?")
+  })
+
   it("exposes true SLM status shape for progress polling", () => {
     const status = getTrueSlmStatus()
     expect(status.mode).toBe("true-slm")

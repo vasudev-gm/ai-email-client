@@ -78,7 +78,6 @@ function buildAuthProviders() {
           params: {
             scope: "openid profile email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify",
             access_type: "offline",
-            prompt: "consent",
             include_granted_scopes: "true",
           },
         },

@@ -49,7 +49,7 @@ export default function AISummary({ emailId, localAIMode, onClose }: AISummaryPr
       if (data.summary) {
         setSummary(data.summary)
       } else {
-        setError("Failed to generate summary")
+        setError(data?.error || "Failed to generate summary")
       }
     } catch {
       setError("Network error")
