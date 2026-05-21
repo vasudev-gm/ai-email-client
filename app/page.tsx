@@ -68,10 +68,46 @@ const EMPTY_COUNTS: FolderCountMap = {
 }
 
 const CUSTOM_LABELS_STORAGE_KEY = "ai-mail-custom-labels"
+const AI_PRIORITY_STORAGE_KEY = "ai-mail-priority-cache"
 
 function getAccountQuery(selectedAccountId: string | null) {
   const apiAccountId = toApiAccountId(selectedAccountId)
   return apiAccountId ? `&accountId=${encodeURIComponent(apiAccountId)}` : ""
+}
+
+function getEmailAccountQuery(accountId?: string | null) {
+  if (!accountId) return ""
+  return `?accountId=${encodeURIComponent(accountId)}`
+}
+
+function withPermanentDeleteQuery(baseQuery: string) {
+  if (!baseQuery) return "?permanent=1"
+  return `${baseQuery}&permanent=1`
+}
+
+async function extractApiErrorMessage(response: Response) {
+  try {
+    const payload = await response.json()
+    if (payload && typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error.trim()
+    }
+  } catch {
+    // Ignore non-JSON error responses.
+  }
+  return `Request failed (status: ${response.status})`
+}
+
+type PriorityCache = Record<string, number>
+
+function getPriorityCacheKey(email: Pick<EmailData, "id" | "accountId">) {
+  return `${email.accountId || "unknown"}::${email.id}`
+}
+
+function applyPriorityCache(emails: EmailData[], cache: PriorityCache) {
+  return emails.map((email) => {
+    const cached = cache[getPriorityCacheKey(email)]
+    return typeof cached === "number" ? { ...email, aiPriority: cached } : email
+  })
 }
 
 async function fetchFolderCounts(selectedAccountId: string | null) {
@@ -141,6 +177,7 @@ export default function Home() {
     searchQuery,
     selectedAccountId,
     setSelectedAccountId,
+    localAIMode,
     isComposeOpen,
     isSidebarOpen,
     setSelectedEmailId,
@@ -164,8 +201,10 @@ export default function Home() {
     content?: string
   } | null>(null)
   const [customLabels, setCustomLabels] = useState<string[]>([])
+  const [priorityCache, setPriorityCache] = useState<PriorityCache>({})
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimeoutRef = useRef<number | null>(null)
+  const inFlightPriorityKeysRef = useRef<Set<string>>(new Set())
   const isAuthenticated = status === "authenticated" && Boolean(session?.user?.email)
   const activeSessionAccountId = useMemo(() => {
     const email = session?.user?.email?.trim().toLowerCase()
@@ -233,6 +272,34 @@ export default function Home() {
     }
   }, [])
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(AI_PRIORITY_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as unknown
+      if (!parsed || typeof parsed !== "object") return
+
+      const next: PriorityCache = {}
+      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof key !== "string") continue
+        if (typeof value === "number" && Number.isFinite(value)) {
+          next[key] = Math.min(5, Math.max(1, Math.round(value)))
+        }
+      }
+      setPriorityCache(next)
+    } catch {
+      // Ignore malformed cache data.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(AI_PRIORITY_STORAGE_KEY, JSON.stringify(priorityCache))
+    } catch {
+      // Ignore storage write errors.
+    }
+  }, [priorityCache])
+
   const handleAddCustomLabel = useCallback((label: string) => {
     const trimmed = label.trim()
     if (!trimmed) return
@@ -267,7 +334,8 @@ export default function Home() {
         fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId),
         syncAllFolders ? refreshFolderCounts() : Promise.resolve(),
       ])
-      setEmails(visibleEmails)
+      const hydratedEmails = applyPriorityCache(visibleEmails, priorityCache)
+      setEmails(hydratedEmails)
       setLastSyncedAt(new Date())
       setSyncError(null)
       setIsProviderSetupBlocked(false)
@@ -281,7 +349,83 @@ export default function Home() {
     } finally {
       if (withLoading) setLoading(false)
     }
-  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, isAuthenticated, isProviderSetupBlocked])
+  }, [
+    currentFolder,
+    searchQuery,
+    selectedAccountId,
+    refreshFolderCounts,
+    isAuthenticated,
+    isProviderSetupBlocked,
+    priorityCache,
+  ])
+
+  const applyPriorityToState = useCallback((email: Pick<EmailData, "id" | "accountId">, priority: number) => {
+    const key = getPriorityCacheKey(email)
+    const normalized = Math.min(5, Math.max(1, Math.round(priority)))
+
+    setPriorityCache((current) => {
+      if (current[key] === normalized) return current
+      return { ...current, [key]: normalized }
+    })
+
+    setEmails((current) =>
+      current.map((item) =>
+        item.id === email.id && item.accountId === email.accountId
+          ? { ...item, aiPriority: normalized }
+          : item
+      )
+    )
+
+    setSelectedEmail((current) => {
+      if (!current) return current
+      if (current.id !== email.id || current.accountId !== email.accountId) return current
+      return { ...current, aiPriority: normalized }
+    })
+  }, [])
+
+  const requestAIPriority = useCallback(async (email: EmailData) => {
+    const cacheKey = getPriorityCacheKey(email)
+    if (typeof priorityCache[cacheKey] === "number") {
+      return priorityCache[cacheKey]
+    }
+    if (inFlightPriorityKeysRef.current.has(cacheKey)) return null
+
+    inFlightPriorityKeysRef.current.add(cacheKey)
+    try {
+      const accountQuery = getEmailAccountQuery(email.accountId)
+      const response = await fetch(`/api/emails/${email.id}/ai${accountQuery}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "prioritize", localAIMode }),
+      })
+      if (!response.ok) return null
+      const data = await response.json()
+      if (typeof data?.priority !== "number") return null
+
+      const normalized = Math.min(5, Math.max(1, Math.round(data.priority)))
+      applyPriorityToState(email, normalized)
+      return normalized
+    } catch {
+      return null
+    } finally {
+      inFlightPriorityKeysRef.current.delete(cacheKey)
+    }
+  }, [priorityCache, localAIMode, applyPriorityToState])
+
+  const requestAIPriorityForVisibleEmails = useCallback(async (visibleEmails: EmailData[]) => {
+    const candidates = visibleEmails
+      .filter((email) => !email.isDeleted)
+      .filter((email) => typeof email.aiPriority !== "number")
+      .filter((email) => typeof priorityCache[getPriorityCacheKey(email)] !== "number")
+      .slice(0, 5)
+
+    if (!candidates.length) return
+    await Promise.all(candidates.map((email) => requestAIPriority(email)))
+  }, [priorityCache, requestAIPriority])
+
+  useEffect(() => {
+    void requestAIPriorityForVisibleEmails(emails)
+  }, [emails, requestAIPriorityForVisibleEmails])
 
   const lastSyncedLabel = (() => {
     void syncClockTick
@@ -339,15 +483,27 @@ export default function Home() {
         return
       }
 
+      // Avoid re-fetch loops when the same email is already loaded in state.
+      if (selectedEmail?.id === selectedEmailId) {
+        if (typeof selectedEmail.aiPriority !== "number") {
+          void requestAIPriority(selectedEmail)
+        }
+        return
+      }
+
       try {
-        const response = await fetch(`/api/emails/${selectedEmailId}`)
+        const accountQuery = getEmailAccountQuery(selectedEmail?.accountId)
+        const response = await fetch(`/api/emails/${selectedEmailId}${accountQuery}`)
         if (!response.ok) throw new Error(`Failed to fetch email (status: ${response.status})`)
         const data = await response.json()
         if (!isCancelled) {
           setSelectedEmail(data)
+          if (typeof data.aiPriority !== "number") {
+            void requestAIPriority(data)
+          }
           let shouldSetReadLocally = data.isRead
           if (!data.isRead) {
-            const markReadResponse = await fetch(`/api/emails/${selectedEmailId}`, {
+            const markReadResponse = await fetch(`/api/emails/${selectedEmailId}${accountQuery}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ isRead: true }),
@@ -375,7 +531,13 @@ export default function Home() {
     return () => {
       isCancelled = true
     }
-  }, [selectedEmailId, refreshFolderCounts, isAuthenticated])
+  }, [
+    selectedEmailId,
+    refreshFolderCounts,
+    isAuthenticated,
+    selectedEmail,
+    requestAIPriority,
+  ])
 
   const handleSendEmail = async (data: {
     to: string
@@ -465,26 +627,45 @@ export default function Home() {
     if (Object.keys(payload).length === 0) return
 
     const responses = await Promise.all(
-      ids.map((id) =>
-        fetch(`/api/emails/${id}`, {
+      ids.map((id) => {
+        const accountId = emails.find((email) => email.id === id)?.accountId
+        const accountQuery = getEmailAccountQuery(accountId)
+
+        if (action === "delete" && currentFolder === "DELETED") {
+          return fetch(`/api/emails/${id}${withPermanentDeleteQuery(accountQuery)}`, {
+            method: "DELETE",
+          })
+        }
+
+        return fetch(`/api/emails/${id}${accountQuery}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         })
-      )
+      })
     )
-    const failedIds = responses
-      .map((response, index) => (!response.ok ? ids[index] : null))
-      .filter((id): id is string => Boolean(id))
-    if (failedIds.length > 0) {
-      console.error(`Bulk email update failed for IDs: ${failedIds.join(", ")}`)
-      showToast("Some emails could not be updated.", "error")
+    const failedResults = await Promise.all(
+      responses.map(async (response, index) => {
+        if (response.ok) return null
+        return {
+          id: ids[index],
+          message: await extractApiErrorMessage(response),
+        }
+      })
+    )
+    const failed = failedResults.filter((item): item is { id: string; message: string } => Boolean(item))
+
+    if (failed.length > 0) {
+      console.error(`Bulk email update failed for IDs: ${failed.map((item) => item.id).join(", ")}`)
+      showToast(failed[0].message || "Some emails could not be updated.", "error")
       return
     }
 
     if (action === "notSpam") {
       const movedCount = ids.length
       showToast(movedCount === 1 ? "Moved 1 email to Inbox." : `Moved ${movedCount} emails to Inbox.`)
+    } else if (action === "delete" && currentFolder === "DELETED") {
+      showToast(ids.length === 1 ? "Email permanently deleted." : `${ids.length} emails permanently deleted.`)
     } else if (action === "move" && value) {
       showToast(ids.length === 1 ? `Moved to ${value}.` : `Moved ${ids.length} emails to ${value}.`)
     } else if (action === "addLabel" && value) {
@@ -492,13 +673,46 @@ export default function Home() {
     }
 
     const refreshedEmails = await fetchVisibleEmails(currentFolder, searchQuery, selectedAccountId)
-    setEmails(refreshedEmails)
+    const hydratedEmails = applyPriorityCache(refreshedEmails, priorityCache)
+    setEmails(hydratedEmails)
+    if (selectedEmailId) {
+      const selectedStillVisible = hydratedEmails.some((email) => {
+        if (email.id !== selectedEmailId) return false
+        if (selectedEmail?.accountId) return email.accountId === selectedEmail.accountId
+        return true
+      })
+      if (!selectedStillVisible) {
+        setSelectedEmailId(null)
+        setSelectedEmail(null)
+      }
+    }
+    void requestAIPriorityForVisibleEmails(hydratedEmails)
     void refreshFolderCounts()
-  }, [currentFolder, searchQuery, selectedAccountId, refreshFolderCounts, showToast])
+  }, [
+    currentFolder,
+    searchQuery,
+    selectedAccountId,
+    selectedEmailId,
+    selectedEmail?.accountId,
+    setSelectedEmailId,
+    refreshFolderCounts,
+    showToast,
+    priorityCache,
+    applyPriorityCache,
+    requestAIPriorityForVisibleEmails,
+  ])
 
   const handleDeleteEmail = useCallback(async () => {
     if (!selectedEmailId) return
-    const response = await fetch(`/api/emails/${selectedEmailId}`, { method: "DELETE" })
+    const accountQuery = getEmailAccountQuery(selectedEmail?.accountId)
+    const isDeletedFolder = currentFolder === "DELETED" || selectedEmail?.isDeleted
+    const response = isDeletedFolder
+      ? await fetch(`/api/emails/${selectedEmailId}${withPermanentDeleteQuery(accountQuery)}`, { method: "DELETE" })
+      : await fetch(`/api/emails/${selectedEmailId}${accountQuery}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDeleted: true }),
+      })
     if (!response.ok) {
       console.error(`Failed to delete email (status: ${response.status})`)
       return
@@ -507,11 +721,12 @@ export default function Home() {
     setSelectedEmailId(null)
     setSelectedEmail(null)
     void refreshFolderCounts()
-  }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
+  }, [selectedEmailId, selectedEmail?.accountId, selectedEmail?.isDeleted, currentFolder, setSelectedEmailId, refreshFolderCounts])
 
   const handleRestoreEmail = useCallback(async () => {
     if (!selectedEmailId) return
-    const response = await fetch(`/api/emails/${selectedEmailId}`, {
+    const accountQuery = getEmailAccountQuery(selectedEmail?.accountId)
+    const response = await fetch(`/api/emails/${selectedEmailId}${accountQuery}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isDeleted: false }),
@@ -524,11 +739,12 @@ export default function Home() {
     setSelectedEmailId(null)
     setSelectedEmail(null)
     void refreshFolderCounts()
-  }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts])
+  }, [selectedEmailId, selectedEmail?.accountId, setSelectedEmailId, refreshFolderCounts])
 
   const handleNotSpamEmail = useCallback(async () => {
     if (!selectedEmailId) return
-    const response = await fetch(`/api/emails/${selectedEmailId}`, {
+    const accountQuery = getEmailAccountQuery(selectedEmail?.accountId)
+    const response = await fetch(`/api/emails/${selectedEmailId}${accountQuery}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isJunk: false }),
@@ -543,7 +759,7 @@ export default function Home() {
     setSelectedEmail(null)
     void refreshFolderCounts()
     showToast("Moved to Inbox.")
-  }, [selectedEmailId, setSelectedEmailId, refreshFolderCounts, showToast])
+  }, [selectedEmailId, selectedEmail?.accountId, setSelectedEmailId, refreshFolderCounts, showToast])
 
   const handleLogoutSelectedAccount = useCallback(async () => {
     const selectedId = selectedAccountId

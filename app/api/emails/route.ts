@@ -116,13 +116,22 @@ export async function GET(request: Request) {
   if (isMicrosoftSession) {
     try {
       if (countOnly && unreadOnly && folder.toUpperCase() === "ALL") {
-        const folderPayloads = await Promise.all(
+        const folderPayloads = await Promise.allSettled(
           COUNT_FOLDERS.map(async (folderId) => {
             const list = await fetchOutlookEmails({ accessToken: session.accessToken as string }, folderId)
             return [folderId, list.filter((email) => !email.isRead).length] as const
           })
         )
-        const folderCounts = Object.fromEntries(folderPayloads) as Record<(typeof COUNT_FOLDERS)[number], number>
+        const folderCounts = COUNT_FOLDERS.reduce((acc, folderId, index) => {
+          const result = folderPayloads[index]
+          if (result.status === "fulfilled") {
+            acc[folderId] = result.value[1]
+          } else {
+            // Keep sync resilient when one Graph folder endpoint is flaky.
+            acc[folderId] = 0
+          }
+          return acc
+        }, {} as Record<(typeof COUNT_FOLDERS)[number], number>)
         return NextResponse.json({
           emails: [],
           total: folderCounts.INBOX,
@@ -132,7 +141,17 @@ export async function GET(request: Request) {
         })
       }
 
-      let emails = await fetchOutlookEmails({ accessToken: session.accessToken as string }, folder)
+      let emails: Awaited<ReturnType<typeof fetchOutlookEmails>>
+      try {
+        emails = await fetchOutlookEmails({ accessToken: session.accessToken as string }, folder)
+      } catch (folderError) {
+        const normalizedFolder = folder.toUpperCase()
+        if (normalizedFolder === "STARRED" || normalizedFolder === "JUNK") {
+          emails = []
+        } else {
+          throw folderError
+        }
+      }
 
       if (unreadOnly) {
         emails = emails.filter((e) => !e.isRead)

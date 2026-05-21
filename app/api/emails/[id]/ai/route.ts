@@ -11,11 +11,28 @@ import {
   getAIDebugInfo,
 } from "@/lib/ai"
 
+function resolveTargetProvider(accountId: string | null) {
+  if (!accountId) return null
+  const normalized = accountId.trim().toLowerCase()
+  if (!normalized) return null
+
+  if (normalized === "gmail" || normalized.includes("google") || normalized.startsWith("oauth-google-")) {
+    return "google" as const
+  }
+  if (normalized === "outlook" || normalized.includes("microsoft") || normalized.startsWith("oauth-microsoft-entra-id-")) {
+    return "microsoft-entra-id" as const
+  }
+  return "local" as const
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const { searchParams } = new URL(request.url)
+  const accountId = searchParams.get("accountId")
+  const targetProvider = resolveTargetProvider(accountId)
   const { action, localAIMode, debug } = await request.json()
   const includeDebug = Boolean(debug)
 
@@ -24,15 +41,22 @@ export async function POST(
   }
 
   const session = await auth()
+  if (targetProvider && targetProvider !== "local" && session?.provider !== targetProvider) {
+    return NextResponse.json(
+      { error: "Selected email belongs to a different connected account. Switch account and try again." },
+      { status: 409 }
+    )
+  }
+
   let email = null as (typeof MOCK_EMAILS)[number] | null
 
-  if (session?.provider === "google" && session.accessToken) {
+  if (session?.provider === "google" && session.accessToken && targetProvider !== "microsoft-entra-id") {
     try {
       email = await fetchGmailEmailById({ accessToken: session.accessToken }, id)
     } catch {
       email = null
     }
-  } else if (session?.provider === "microsoft-entra-id" && session.accessToken) {
+  } else if (session?.provider === "microsoft-entra-id" && session.accessToken && targetProvider !== "google") {
     try {
       email = await fetchOutlookEmailById({ accessToken: session.accessToken }, id)
     } catch {

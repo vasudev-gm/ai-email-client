@@ -440,6 +440,12 @@ export async function deleteGmailEmail(config: GmailConfig, id: string) {
   })
 }
 
+export async function permanentlyDeleteGmailEmail(config: GmailConfig, id: string) {
+  await fetchGmail(config, `/users/me/messages/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  })
+}
+
 export async function sendGmailEmail(config: GmailConfig, options: {
   to: string
   cc?: string

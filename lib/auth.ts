@@ -76,7 +76,7 @@ function buildAuthProviders() {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         authorization: {
           params: {
-            scope: "openid profile email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify",
+            scope: "openid profile email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://mail.google.com/",
             access_type: "offline",
             include_granted_scopes: "true",
           },
