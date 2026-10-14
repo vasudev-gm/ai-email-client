@@ -163,22 +163,29 @@ function sanitizeEmailImageResources(html: string) {
 function stripDarkModeTemplateStyles(html: string) {
   // Many transactional templates embed dark-mode CSS that flips text colors
   // without fully updating background blocks, causing unreadable sections.
-  let normalized = html.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (styleBlock) => {
-    if (!/prefers-color-scheme\s*:\s*dark/i.test(styleBlock) && !/\[data-ogsc\]/i.test(styleBlock)) {
-      return styleBlock
-    }
+  const styleBlockPattern = /<style\b[^>]*>[\s\S]*?<\/style>/gi
+  let normalized = html
+  let previous: string
 
-    const withoutDarkMedia = styleBlock.replace(
-      /@media[^{}]*prefers-color-scheme\s*:\s*dark[^{}]*\{[\s\S]*?\n\s*\}/gi,
-      ""
-    )
-    const withoutOgsc = withoutDarkMedia.replace(/[^{}]*\[data-ogsc\][^{}]*\{[^{}]*\}/gi, "")
+  do {
+    previous = normalized
+    normalized = normalized.replace(styleBlockPattern, (styleBlock) => {
+      if (!/prefers-color-scheme\s*:\s*dark/i.test(styleBlock) && !/\[data-ogsc\]/i.test(styleBlock)) {
+        return styleBlock
+      }
 
-    // If the style block only contained dark-mode rules, drop it.
-    return withoutOgsc.trim() === "" || /^<style\b[^>]*>\s*<\/style>$/i.test(withoutOgsc)
-      ? ""
-      : withoutOgsc
-  })
+      const withoutDarkMedia = styleBlock.replace(
+        /@media[^{}]*prefers-color-scheme\s*:\s*dark[^{}]*\{[\s\S]*?\n\s*\}/gi,
+        ""
+      )
+      const withoutOgsc = withoutDarkMedia.replace(/[^{}]*\[data-ogsc\][^{}]*\{[^{}]*\}/gi, "")
+
+      // If the style block only contained dark-mode rules, drop it.
+      return withoutOgsc.trim() === "" || /^<style\b[^>]*>\s*<\/style>$/i.test(withoutOgsc)
+        ? ""
+        : withoutOgsc
+    })
+  } while (normalized !== previous)
 
   normalized = normalized.replace(/\sdata-ogsc(?:="[^"]*")?/gi, "")
 
