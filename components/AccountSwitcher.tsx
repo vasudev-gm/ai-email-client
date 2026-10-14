@@ -136,10 +136,9 @@ export default function AccountSwitcher() {
 
   useEffect(() => {
     if (!sessionAccount) return
-    setPersistedAccounts((current) => {
-      if (current.some((account) => account.id === sessionAccount.id)) return current
-      return [sessionAccount, ...current]
-    })
+    setPersistedAccounts((current) =>
+      current.filter((account) => account.id !== sessionAccount.id)
+    )
   }, [sessionAccount])
 
   useEffect(() => {
