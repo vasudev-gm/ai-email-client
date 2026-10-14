@@ -112,7 +112,7 @@ function isSafeInlineResourceUrl(url: string) {
 
   // blob: URLs are document-scoped and cid: is not browser-loadable.
   if (normalized.startsWith("blob:") || normalized.startsWith("cid:")) return false
-  if (normalized.startsWith("javascript:")) return false
+  if (normalized.startsWith("javascript:") || normalized.startsWith("vbscript:")) return false
 
   // Allow common external image formats over HTTP(S).
   if (!/^https?:\/\//i.test(url.trim())) return false
